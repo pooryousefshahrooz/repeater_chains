@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[27]:
 
 
 import random
@@ -10,7 +10,7 @@ import csv
 import networkx as nx
 
 
-# In[6]:
+# In[28]:
 
 
 class Memory:
@@ -23,6 +23,8 @@ class Memory:
         self.EPR_age = -1 # we track the age of the EPR pair generated for this memory
         self.memory_id = memory_id
         self.repeater_id = repeater_id
+        self.generated_flag = False
+        self.expired = False
         self.attempt_flag = False# check if we have started the attempt 
         self.synchronous_flag = False # indicates you can not try even if you have failed untile next time slot
         self.attempt_start_time = 0 # we track when we have started the attempt
@@ -68,7 +70,9 @@ class System:
         self.q_value = q_value
         self.e2e_EPRs = 0
         self.clock_counter = 0
+        self.last_generated = 0
         self.synchronous_flag = False
+        self.all_generated_flag = False
         self.initial_fidelity = initial_fidelity 
         self.cut_off= cut_off
         self.path_id_path_repeaters =path_id_path_repeaters
@@ -91,7 +95,7 @@ class System:
         self.each_path_swap_on_source_node_qubit_arrived={}
         self.each_path_swap_on_source_node_qubit_id={}
         self.each_path_swap_on_end_node_qubit_id = {}
-        
+        self.paralel_each_memory_attempt_flag ={}
         self.longest_link_duration = 0
         self.message_channel = []
         self.swap_list = {}
@@ -104,7 +108,9 @@ class System:
             for repeater in self.path_id_path_repeaters[path_id][1:-1]:
                 self.swap_list[repeater]=[]
                 self.swap_start_sending_time_list[repeater] = []   
-            
+            for repeater in self.path_id_path_repeaters[path_id][:-1]:
+                for memory_id in range(self.each_path_memory_min[path_id],self.each_path_memory_max[path_id]):
+                    self.paralel_each_memory_attempt_flag[path_id,repeater,memory_id] = False
             for repeater in self.path_id_path_repeaters[path_id]:
                 for memory_id in range(self.each_path_memory_min[path_id],self.each_path_memory_max[path_id]):
                     if repeater == self.each_path_source_destination[path_id][0]:
@@ -124,7 +130,9 @@ class System:
                 repeater_index+=1
         longest_link = max(link_lengths)
         self.longest_link_duration = int((1.44*longest_link)/ 299792*1000000)
-            
+         
+        sum_link = sum(link_lengths)-link_lengths[len(link_lengths)-1]
+        self.e2e_communication_duration = int((1.44*sum_link)/ 299792*1000000)
         for path_id,path_links in self.path_id_path_links.items():
             for link in path_links:
                 for memory_id in range(self.each_path_memory_min[path_id],self.each_path_memory_max[path_id]):
@@ -184,9 +192,9 @@ class System:
 
        
             
-        if (not left_memory_object.attempt_flag and 
+        if  (not left_memory_object.attempt_flag and 
             not left_node_memory_exist_flag and 
-            not right_node_memory_exist_flag) or (left_memory_object.mode =="synch1" and self.failed_at_least_one_link):
+            not right_node_memory_exist_flag and self.mode=="parallel" and not left_memory_object.generated_flag) or (left_memory_object.mode =="synch1" and self.failed_at_least_one_link):
 #             if left_memory_object.synchronous_flag and left_memory_object.mode =="synch1":
 #                 pass
 #             else:
@@ -221,15 +229,16 @@ class System:
             left_memory_object.EPR_age+=1
             right_memory_object.EPR_age+=1
             if left_memory_object.EPR_age >self.each_link_cut_off[link] and self.having_cut_offs:
+                left_memory_object.expired= True
                 if global_printing_flag:
                     print("0!!!!!unfortunately the qubit got aged at link %s %s  age %s cut_off %s at time %s "%(left_memory_object.repeater_id,left_memory_object.entangled_node,left_memory_object.EPR_age, self.cut_off,current_clock_counter))
-                self.send_a_message(link[0],path_id,"cancelling",left_memory_object.EPR_age,
-                                                        right_memory_object.EPR_age,
-                                                        link[0],
-                                                        link[1],
-                                                        left_memory_object.memory_id,
-                                                        right_memory_object.memory_id,
-                                                        current_clock_counter,False)
+#                 self.send_a_message(link[0],path_id,"cancelling",left_memory_object.EPR_age,
+#                                                         right_memory_object.EPR_age,
+#                                                         link[0],
+#                                                         link[1],
+#                                                         left_memory_object.memory_id,
+#                                                         right_memory_object.memory_id,
+#                                                         current_clock_counter,False)
                 
                 left_memory_object.attempt_flag = False
                 left_memory_object.EPR_age = -1
@@ -244,14 +253,14 @@ class System:
             if left_memory_object.EPR_age >self.each_link_cut_off[link] and self.having_cut_offs:
                 if global_printing_flag:
                     print("1!!!!!! unfortunately the qubit got aged at link %s %s  age %s cut_off %s at time %s "%(left_memory_object.repeater_id,left_memory_object.entangled_node,left_memory_object.EPR_age, self.cut_off,current_clock_counter))
-                
-                self.send_a_message(link[0],path_id,"cancelling",left_memory_object.EPR_age,
-                                                        right_memory_object.EPR_age,
-                                                        link[0],
-                                                        link[1],
-                                                        left_memory_object.memory_id,
-                                                        right_memory_object.memory_id,
-                                                        current_clock_counter,False)
+                left_memory_object.expired= True
+#                 self.send_a_message(link[0],path_id,"cancelling",left_memory_object.EPR_age,
+#                                                         right_memory_object.EPR_age,
+#                                                         link[0],
+#                                                         link[1],
+#                                                         left_memory_object.memory_id,
+#                                                         right_memory_object.memory_id,
+#                                                         current_clock_counter,False)
                 
                 left_memory_object.attempt_flag = False
                 left_memory_object.EPR_age = -1
@@ -261,10 +270,12 @@ class System:
                 if left_memory_object.attempt_finishing_time == current_clock_counter:
                     random_value = random.uniform(0,1)
                     if random_value<= left_memory_object.attempt_success_p:
+                        if current_clock_counter> self.last_generated:
+                            self.last_generated = current_clock_counter
                         if global_printing_flag:
                             print("EPR pair on link %s,%s was generated at time %s! "%(left_memory_object.repeater_id,left_memory_object.entangled_node,current_clock_counter))
                         left_memory_object.attempt_flag = False
-                        
+                        left_memory_object.generated_flag = True
                         if left_memory_object.mode =="synch1" or left_memory_object.mode =="synch2":
                             left_memory_object.EPR_age = 2*left_memory_object.longest_link_duration
                             right_memory_object.EPR_age = 1*left_memory_object.longest_link_duration
@@ -362,7 +373,17 @@ class System:
             if global_printing_flag:
                 print("********************* we delivered one e2e EPR pair at time %s *********messages in channel %s***************"%(clock_counter,len(self.message_channel)))
             self.e2e_EPRs+=1
-            
+            for link in self.path_id_path_links[path_id]:
+                for memory_id in range(self.each_path_memory_min[path_id],self.each_path_memory_max[path_id]):
+                    left_memory_object  = self.each_path_repeater_left_right_memory_id_memory_object[path_id,link[0],"right",memory_id]
+                    left_memory_object.generated_flag = False
+                    left_memory_object.expired = False
+                    self.each_path_swap_on_source_node_qubit_arrived[path_id]=False
+                    self.each_path_swap_on_source_node_qubit_id[path_id] = -1
+                    self.each_path_swap_on_end_node_qubit_id[path_id] = -1
+
+                    self.make_all_memories_free(path_id)
+                    self.all_generated_flag = False
             for repeater in self.path_id_path_repeaters[path_id][1:-1]: 
                 if len(self.swap_list[repeater])==1:
                     self.swap_list[repeater] =[]
@@ -373,6 +394,14 @@ class System:
             self.each_path_swap_on_source_node_qubit_arrived[path_id]=False
             self.each_path_swap_on_source_node_qubit_id[path_id] = -1
             self.each_path_swap_on_end_node_qubit_id[path_id] = -1
+            
+            
+            
+            for link in self.path_id_path_links[path_id]:
+                for memory_id in range(self.each_path_memory_min[path_id],self.each_path_memory_max[path_id]):
+                    left_memory_object  = self.each_path_repeater_left_right_memory_id_memory_object[path_id,link[0],"right",memory_id]
+                    left_memory_object.generated_flag = False
+                    left_memory_object.expired = False
             
     def swap_operation(self,current_clock_counter,path_id,repeater):
         global global_printing_flag
@@ -446,9 +475,44 @@ class System:
                                     right_memory_object.EPR_age = -1
         self.check_swap_results_arrived(path_id,current_clock_counter)
         self.check_all_swaps(path_id,current_clock_counter)
+        self.round_flag = False
+        for repeater in self.path_id_path_repeaters[path_id][:-1]: 
+            for memory_id in range(self.each_path_memory_min[path_id],self.each_path_memory_max[path_id]):
+                self.paralel_each_memory_attempt_flag[repeater,memory_id] = False
         
-        
-        
+    def all_are_generated(self,path_id):
+        for link in self.path_id_path_links[path_id]:
+            for memory_id in range(self.each_path_memory_min[path_id],self.each_path_memory_max[path_id]):
+                left_memory_object  = self.each_path_repeater_left_right_memory_id_memory_object[path_id,link[0],"right",memory_id]
+                if not left_memory_object.generated_flag:
+                    return False
+                
+        if global_printing_flag:
+            print("***************************we have generated on all even if some maybe expired")
+        self.all_generated_flag = True
+        return True
+    def none_expired(self,path_id):
+        for link in self.path_id_path_links[path_id]:
+            for memory_id in range(self.each_path_memory_min[path_id],self.each_path_memory_max[path_id]):
+                left_memory_object  = self.each_path_repeater_left_right_memory_id_memory_object[path_id,link[0],"right",memory_id]
+                if left_memory_object.expired:
+                    return False
+        if global_printing_flag:
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! none of the qubits is expired!!!!")
+        return True
+    
+    def make_all_memories_free(self,path_id):
+        for repeater in self.path_id_path_repeaters[path_id]:
+            for memory_id in range(self.each_path_memory_min[path_id],self.each_path_memory_max[path_id]):
+                if repeater == self.each_path_source_destination[path_id][0]:
+                    self.each_repeater_left_right_memory_exist_flag[path_id,repeater,"right",memory_id] =False
+                elif repeater == self.each_path_source_destination[path_id][1]:
+                    self.each_repeater_left_right_memory_exist_flag[path_id,repeater,"left",memory_id] =False
+                else:
+                    self.each_repeater_left_right_memory_exist_flag[path_id,repeater,"right",memory_id] =False
+                    self.each_repeater_left_right_memory_exist_flag[path_id,repeater,"left",memory_id] =False
+        if global_printing_flag:
+            print("***************************we maid all memories free *****************")
     def main(self):
         self.e2e_EPRs = 0
         for clock_counter in range(self.end_time):
@@ -460,8 +524,30 @@ class System:
                         left_memory_object  = self.each_path_repeater_left_right_memory_id_memory_object[path_id,link[0],"right",memory_id]
                         right_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[path_id,link[1],"left",memory_id]
                         self.update(path_id,link,memory_id,clock_counter)
-                for repeater in self.path_id_path_repeaters[path_id][1:-1]:
-                    self.swap_operation(clock_counter,path_id,repeater)
+                        
+                if self.all_are_generated(path_id):
+                    if self.none_expired(path_id):
+                        for repeater in self.path_id_path_repeaters[path_id][1:-1]:
+                            self.swap_operation(clock_counter,path_id,repeater)
+                            
+                            
+                            
+                            
+                    else:
+                        if self.last_generated+self.e2e_communication_duration == clock_counter:
+                            for link in self.path_id_path_links[path_id]:
+                                for memory_id in range(self.each_path_memory_min[path_id],self.each_path_memory_max[path_id]):
+                                    left_memory_object  = self.each_path_repeater_left_right_memory_id_memory_object[path_id,link[0],"right",memory_id]
+                                    left_memory_object.generated_flag = False
+                                    left_memory_object.expired = False
+                                    self.each_path_swap_on_source_node_qubit_arrived[path_id]=False
+                                    self.each_path_swap_on_source_node_qubit_id[path_id] = -1
+                                    self.each_path_swap_on_end_node_qubit_id[path_id] = -1
+                                    
+                                    self.make_all_memories_free(path_id)
+                                    self.all_generated_flag = False
+                                    
+                                    
 
 
 # In[ ]:
@@ -470,7 +556,7 @@ class System:
 
 
 
-# In[7]:
+# In[29]:
 
 
 global_printing_flag = False
@@ -498,10 +584,10 @@ for number_of_repeaters in [1,2,3,4,5,6]:
     path_id_path_links =each_R_path_links[number_of_repeaters] 
     each_path_source_destination = {0:[0,number_of_repeaters+1]}
     initial_fidelity  = 0.95
-    experimenting_classical_communication = True
-    entanglement_generation_delay = True
+    experimenting_classical_communication = False
+    entanglement_generation_delay = False
     having_cut_offs = False
-    results_file_path = "results/asynch_repeater_chain_results.csv"
+    results_file_path = "results/parallel_repeater_chain_results.csv"
     # for memory_max in [1,2,4,6,8,10,14,16]:
     #     for cut_off in [50,60,70,80,90,100,110,120,130,140,150,200,300]:
     #         for left_link_length in [4,6,8,10,12,14,16,18,20]:
@@ -517,7 +603,7 @@ for number_of_repeaters in [1,2,3,4,5,6]:
             each_path_memory_min = {0:0}
             each_path_memory_max= {0:memory_max}
             running_time = 4000000
-            scheme = "asynch"
+            scheme = "parallel"
             if not having_cut_offs:
                 system = System(scheme,running_time,1,1000,each_link_length,
                                 each_path_memory_min,each_path_memory_max)
