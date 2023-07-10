@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[14]:
 
 
 import random
@@ -9,9 +9,10 @@ import time
 import csv
 import networkx as nx
 import numpy as np
+import math
 
 
-# In[6]:
+# In[38]:
 
 
 class Memory:
@@ -61,8 +62,9 @@ class Message:
                                                                                           clock_counter))
             
 class System:
-    def __init__(self,mode,end_time,q_value,cut_off,each_link_length,each_path_memory_min,each_path_memory_max):
+    def __init__(self,mode,path_id,end_time,q_value,cut_off,each_link_length,each_path_memory_min,each_path_memory_max):
         self.mode = mode
+        self.path_id = path_id
         self.end_time = end_time
         self.experimenting_classical_communication = experimenting_classical_communication
         self.having_cut_offs = having_cut_offs
@@ -78,10 +80,9 @@ class System:
         self.each_link_cut_off  ={}
         self.each_link_length = each_link_length
         self.G = nx.Graph()
-        for path, edges in self.path_id_path_links.items():
-            for edge in edges:
-                self.each_link_cut_off[edge] = self.cut_off
-                self.G.add_edge(edge[0],edge[1],weight=self.each_link_length[edge])
+        for edge in self.path_id_path_links[self.path_id]:
+            self.each_link_cut_off[edge] = self.cut_off
+            self.G.add_edge(edge[0],edge[1],weight=self.each_link_length[edge])
         self.each_path_memory_min = each_path_memory_min
         self.each_path_memory_max = each_path_memory_max
         self.each_path_each_repeater_each_link_each_memory = {}
@@ -92,63 +93,76 @@ class System:
         self.each_path_swap_on_source_node_qubit_arrived={}
         self.each_path_swap_on_source_node_qubit_id={}
         self.each_path_swap_on_end_node_qubit_id = {}
-        
+        self.each_path_all_delivered_pairs_fidelity ={}
         self.longest_link_duration = 0
         self.message_channel = []
         self.swap_list = {}
         self.swap_start_sending_time_list = {}
         self.failed_at_least_one_link = False
-        for path_id in self.path_id_path_links:
-            self.each_path_swap_on_source_node_qubit_arrived[path_id]=False
-            self.each_path_swap_on_source_node_qubit_id[path_id] = -1
-            self.each_path_swap_on_end_node_qubit_id[path_id] = -1
-            for repeater in self.path_id_path_repeaters[path_id][1:-1]:
-                self.swap_list[repeater]=[]
-                self.swap_start_sending_time_list[repeater] = []   
-            
-            for repeater in self.path_id_path_repeaters[path_id]:
-                for memory_id in range(self.each_path_memory_min[path_id],self.each_path_memory_max[path_id]):
-                    if repeater == self.each_path_source_destination[path_id][0]:
-                        self.each_repeater_left_right_memory_exist_flag[path_id,repeater,"right",memory_id] =False
-                    elif repeater == self.each_path_source_destination[path_id][1]:
-                        self.each_repeater_left_right_memory_exist_flag[path_id,repeater,"left",memory_id] =False
-                    else:
-                        self.each_repeater_left_right_memory_exist_flag[path_id,repeater,"right",memory_id] =False
-                        self.each_repeater_left_right_memory_exist_flag[path_id,repeater,"left",memory_id] =False
+        self.each_path_each_repeater_swaped_memory_ages ={}
+        self.t_coh = 0.1
+        self.F = {}
+        
+        self.mu_i = {}
+        self.mu = 0.97
+        
+        
+
+        self.each_path_swap_on_source_node_qubit_arrived[self.path_id]=False
+        self.each_path_swap_on_source_node_qubit_id[self.path_id] = -1
+        self.each_path_swap_on_end_node_qubit_id[self.path_id] = -1
+        for repeater in self.path_id_path_repeaters[self.path_id][1:-1]:
+            self.F[self.path_id,repeater]= 1
+            try:
+                self.mu_i[self.path_id].append(0.97)
+            except:
+                self.mu_i[self.path_id] = [0.97]
+            self.swap_list[repeater]=[]
+            self.swap_start_sending_time_list[repeater] = []   
+
+        for repeater in self.path_id_path_repeaters[self.path_id]:
+            for memory_id in range(self.each_path_memory_min[path_id],self.each_path_memory_max[self.path_id]):
+                if repeater == self.each_path_source_destination[self.path_id][0]:
+                    self.each_repeater_left_right_memory_exist_flag[self.path_id,repeater,"right",memory_id] =False
+                elif repeater == self.each_path_source_destination[self.path_id][1]:
+                    self.each_repeater_left_right_memory_exist_flag[self.path_id,repeater,"left",memory_id] =False
+                else:
+                    self.each_repeater_left_right_memory_exist_flag[self.path_id,repeater,"right",memory_id] =False
+                    self.each_repeater_left_right_memory_exist_flag[self.path_id,repeater,"left",memory_id] =False
         #if self.mode=="synch1" or self.mode=="synch2":
         link_lengths = []
-        for path_id,path_links in self.path_id_path_links.items():
-            repeater_index = 0
-            for link in path_links:
-                length = self.each_link_length[link]
-                link_lengths.append(length)
-                repeater_index+=1
+        repeater_index = 0
+        for link in self.path_id_path_links[self.path_id]:
+            length = self.each_link_length[link]
+            link_lengths.append(length)
+            repeater_index+=1
         longest_link = max(link_lengths)
         self.longest_link_duration = int((1.44*longest_link)/ 299792*1000000)
             
-        for path_id,path_links in self.path_id_path_links.items():
-            for link in path_links:
-                for memory_id in range(self.each_path_memory_min[path_id],self.each_path_memory_max[path_id]):
-                    length = self.each_link_length[link]
-                    link_success_p = 10**(-0.2*length/10)
+        for link in self.path_id_path_links[self.path_id]:
+
+            for memory_id in range(self.each_path_memory_min[self.path_id],self.each_path_memory_max[self.path_id]):
+                length = self.each_link_length[link]
+                link_success_p = 10**(-0.2*length/10)
 #                     link_success_p = 1
-                    link_duration = int((1.44*length)/ 299792*1000000)
-                    left_memory_object_instanse = Memory(self.mode,link[0],link[1],memory_id,self.longest_link_duration,
-                                           link_duration,self.initial_fidelity,
-                                           link_success_p,self.cut_off)
-                    right_memory_object_instanse = Memory(self.mode,link[1],link[0],memory_id,self.longest_link_duration,
-                                           link_duration,self.initial_fidelity,
-                                           link_success_p,self.cut_off)
-                    self.each_path_repeater_left_right_memory_id_memory_object[path_id,link[0],"right",memory_id] = left_memory_object_instanse
-                    self.each_path_repeater_left_right_memory_id_memory_object[path_id,link[1],"left",memory_id] = right_memory_object_instanse
+                link_duration = int((1.44*length)/ 299792*1000000)
+                left_memory_object_instanse = Memory(self.mode,link[0],link[1],memory_id,
+                                                     self.longest_link_duration,
+                                       link_duration,self.initial_fidelity,
+                                       link_success_p,self.cut_off)
+                right_memory_object_instanse = Memory(self.mode,link[1],link[0],memory_id,self.longest_link_duration,
+                                       link_duration,self.initial_fidelity,
+                                       link_success_p,self.cut_off)
+                self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,link[0],"right",memory_id] = left_memory_object_instanse
+                self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,link[1],"left",memory_id] = right_memory_object_instanse
                     
 
     
   
     
-    def shortest_path_to_end_nodes_length(self,repeater,path_id):
-        source = self.each_path_source_destination[path_id][0]
-        destination = self.each_path_source_destination[path_id][1]
+    def shortest_path_to_end_nodes_length(self,repeater):
+        source = self.each_path_source_destination[self.path_id][0]
+        destination = self.each_path_source_destination[self.path_id][1]
         shortest_path_length1  = nx.shortest_path_length(self.G, source=repeater, target=source,weight = "weight")
         shortest_path_length2  = nx.shortest_path_length(self.G, source=repeater, target=destination,weight = "weight")
         return shortest_path_length1,source
@@ -169,12 +183,12 @@ class System:
         right_memory_object.longest_link_duration = left_memory_object.longest_link_duration
         right_memory_object.each_time_slot_duration = left_memory_object.each_time_slot_duration
         
-    def update(self,path_id,link,memory_id,current_clock_counter):
+    def update(self,link,memory_id,current_clock_counter):
 #         print("going to attempt!")
-        left_memory_object  = self.each_path_repeater_left_right_memory_id_memory_object[path_id,link[0],"right",memory_id]
-        right_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[path_id,link[1],"left",memory_id]
-        left_node_memory_exist_flag = self.each_repeater_left_right_memory_exist_flag[path_id,link[0],"right",memory_id]
-        right_node_memory_exist_flag = self.each_repeater_left_right_memory_exist_flag[path_id,link[1],"left",memory_id]
+        left_memory_object  = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,link[0],"right",memory_id]
+        right_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,link[1],"left",memory_id]
+        left_node_memory_exist_flag = self.each_repeater_left_right_memory_exist_flag[self.path_id,link[0],"right",memory_id]
+        right_node_memory_exist_flag = self.each_repeater_left_right_memory_exist_flag[self.path_id,link[1],"left",memory_id]
 #         if global_printing_flag:
 #             print("attemptig generating EPR at %s on link (%s,%s) flags %s %s "%(current_clock_counter,
 #                                                         left_memory_object.repeater_id,
@@ -196,8 +210,8 @@ class System:
                 right_memory_object.entangled_node = link[0]
                 left_memory_object.attempt_start_time = current_clock_counter
                 left_memory_object.EPR_age = 0
-                self.each_repeater_left_right_memory_exist_flag[path_id,link[0],"right",memory_id] =False
-                self.each_repeater_left_right_memory_exist_flag[path_id,link[1],"left",memory_id] =False
+                self.each_repeater_left_right_memory_exist_flag[self.path_id,link[0],"right",memory_id] =False
+                self.each_repeater_left_right_memory_exist_flag[self.path_id,link[1],"left",memory_id] =False
                 if left_memory_object.mode =="synch1" or left_memory_object.mode =="synch2":
                     if self.experimenting_classical_communication:
                         left_memory_object.attempt_finishing_time = current_clock_counter+2*left_memory_object.longest_link_duration
@@ -224,7 +238,7 @@ class System:
             if left_memory_object.EPR_age >self.each_link_cut_off[link] and self.having_cut_offs:
                 if global_printing_flag:
                     print("0!!!!!unfortunately the qubit got aged at link %s %s  age %s cut_off %s at time %s "%(left_memory_object.repeater_id,left_memory_object.entangled_node,left_memory_object.EPR_age, self.cut_off,current_clock_counter))
-                self.send_a_message(link[0],path_id,"cancelling",left_memory_object.EPR_age,
+                self.send_a_message(link[0],"cancelling",left_memory_object.EPR_age,
                                                         right_memory_object.EPR_age,
                                                         link[0],
                                                         link[1],
@@ -237,8 +251,8 @@ class System:
                 
                 """we send a message to the source node to execute these commands locally there. 
                 We need to have a local version of this for links to know when they can attempt"""
-                self.each_repeater_left_right_memory_exist_flag[path_id,link[0],"right",memory_id] = False
-                self.each_repeater_left_right_memory_exist_flag[path_id,link[1],"left",memory_id]  = False
+                self.each_repeater_left_right_memory_exist_flag[self.path_id,link[0],"right",memory_id] = False
+                self.each_repeater_left_right_memory_exist_flag[self.path_id,link[1],"left",memory_id]  = False
             
         elif left_memory_object.attempt_flag and not left_node_memory_exist_flag and not right_node_memory_exist_flag:#we have attempted before lets check if it is done
             left_memory_object.EPR_age+=1
@@ -246,7 +260,7 @@ class System:
                 if global_printing_flag:
                     print("1!!!!!! unfortunately the qubit got aged at link %s %s  age %s cut_off %s at time %s "%(left_memory_object.repeater_id,left_memory_object.entangled_node,left_memory_object.EPR_age, self.cut_off,current_clock_counter))
                 
-                self.send_a_message(link[0],path_id,"cancelling",left_memory_object.EPR_age,
+                self.send_a_message(link[0],"cancelling",left_memory_object.EPR_age,
                                                         right_memory_object.EPR_age,
                                                         link[0],
                                                         link[1],
@@ -256,8 +270,8 @@ class System:
                 
                 left_memory_object.attempt_flag = False
                 left_memory_object.EPR_age = -1
-                self.each_repeater_left_right_memory_exist_flag[path_id,link[0],"right",memory_id] = False
-                self.each_repeater_left_right_memory_exist_flag[path_id,link[1],"left",memory_id]  = False
+                self.each_repeater_left_right_memory_exist_flag[self.path_id,link[0],"right",memory_id] = False
+                self.each_repeater_left_right_memory_exist_flag[self.path_id,link[1],"left",memory_id]  = False
             else:
                 if left_memory_object.attempt_finishing_time == current_clock_counter:
                     random_value = random.uniform(0,1)
@@ -273,8 +287,8 @@ class System:
                             left_memory_object.EPR_age = 2*left_memory_object.attached_link_duration
                             right_memory_object.EPR_age = 1*left_memory_object.attached_link_duration
                         left_memory_object.fidelity = self.initial_fidelity
-                        self.each_repeater_left_right_memory_exist_flag[path_id,link[0],"right",memory_id] = True
-                        self.each_repeater_left_right_memory_exist_flag[path_id,link[1],"left",memory_id]  = True
+                        self.each_repeater_left_right_memory_exist_flag[self.path_id,link[0],"right",memory_id] = True
+                        self.each_repeater_left_right_memory_exist_flag[self.path_id,link[1],"left",memory_id]  = True
                     else:
                         if global_printing_flag:
                             print("EPR pair on link %s,%s was failed at time %s ! "%(left_memory_object.repeater_id,left_memory_object.entangled_node,current_clock_counter))
@@ -288,15 +302,15 @@ class System:
                                         
         self.copy_left_instanse_to_right_instance(left_memory_object,right_memory_object)
                     
-    def send_a_message(self,repeater,path_id,message_type,left_node_qubit_age,
+    def send_a_message(self,repeater,message_type,left_node_qubit_age,
                        right_node_qubit_age,left_node,right_node,
                        memory_id_left,memory_id_right,
                        current_clock_counter,success_flag):
-        length,destination = self.shortest_path_to_end_nodes_length(repeater,path_id)
+        length,destination = self.shortest_path_to_end_nodes_length(repeater)
         link_duration = int((1.44*length)/ 299792*1000000)
         
         
-        message = Message(self.experimenting_classical_communication,repeater,destination,path_id,
+        message = Message(self.experimenting_classical_communication,repeater,destination,self.path_id,
                           message_type,left_node,right_node,memory_id_left,memory_id_right,left_node_qubit_age,
                           right_node_qubit_age,current_clock_counter,link_duration,success_flag)
         self.message_channel.append(message)
@@ -329,17 +343,30 @@ class System:
         if message.right_node==self.each_path_source_destination[message.path_id][1]:
             self.each_path_swap_on_end_node_qubit_id[message.path_id]=message.memory_id_right
 
-    def check_swap_results_arrived(self,path_id,clock_counter):
+    def check_swap_results_arrived(self,clock_counter):
+        messages_to_be_removed= []
         for message in self.message_channel:
             if message.arriving_time==clock_counter:
                 if message.type =="cancelling":
                     self.receive_a_fizzling_message(message,clock_counter)
                 elif message.type =="swap_result":
                     self.receive_a_swap_result_message(message,clock_counter)
-                self.message_channel.remove(message)
-        if self.each_path_swap_on_source_node_qubit_arrived[path_id]:
+                    messages_to_be_removed.append(message)
+            
+#                 print("after removing message from channel ",len(self.message_channel))
+        for message in messages_to_be_removed:
+        
+            left_age=message.left_qubit_age
+            right_age = message.right_qubit_age
+            repeater = message.sender
+            try:
+                self.each_path_each_repeater_swaped_memory_ages[self.path_id,repeater].append((left_age,right_age))
+            except:
+                self.each_path_each_repeater_swaped_memory_ages[self.path_id,repeater] = [(left_age,right_age)]
+            self.message_channel.remove(message)
+        if self.each_path_swap_on_source_node_qubit_arrived[self.path_id]:
             missing_one_swap = False
-            for repeater in self.path_id_path_repeaters[path_id][1:-1]:
+            for repeater in self.path_id_path_repeaters[self.path_id][1:-1]:
                 if len(self.swap_list[repeater])>0:
                     if self.swap_list[repeater][0]==0:
                         missing_one_swap= True
@@ -347,12 +374,12 @@ class System:
                     missing_one_swap= True
             if not missing_one_swap:
 #                 print("**************************************************** we release the source node qubit at time %s by settign it to False "%(clock_counter))
-                self.each_repeater_left_right_memory_exist_flag[path_id,self.each_path_source_destination[path_id][0],"right",self.each_path_swap_on_source_node_qubit_id[path_id]] =False
-                self.each_repeater_left_right_memory_exist_flag[path_id,self.each_path_source_destination[path_id][1],"left",self.each_path_swap_on_end_node_qubit_id[path_id]] =False
+                self.each_repeater_left_right_memory_exist_flag[self.path_id,self.each_path_source_destination[path_id][0],"right",self.each_path_swap_on_source_node_qubit_id[path_id]] =False
+                self.each_repeater_left_right_memory_exist_flag[self.path_id,self.each_path_source_destination[path_id][1],"left",self.each_path_swap_on_end_node_qubit_id[path_id]] =False
 
-    def check_all_swaps(self,path_id,clock_counter):
+    def check_all_swaps(self,clock_counter):
         missing_one_swap = False
-        for repeater in self.path_id_path_repeaters[path_id][1:-1]:
+        for repeater in self.path_id_path_repeaters[self.path_id][1:-1]:
             if len(self.swap_list[repeater])>0:
                 if self.swap_list[repeater][0]==0:
                     missing_one_swap= True
@@ -363,7 +390,23 @@ class System:
             if global_printing_flag:
                 print("********************* we delivered one e2e EPR pair at time %s *********messages in channel %s***************"%(clock_counter,len(self.message_channel)))
             self.e2e_EPRs+=1
-            
+            each_repeater_left_right_memory_idle_time = {}
+            for path_repeater,times in self.each_path_each_repeater_swaped_memory_ages.items():
+                key_path_id =path_repeater[0]
+                repeater = path_repeater[1]
+                if self.path_id==key_path_id:
+                    time = times[0]
+                    each_repeater_left_right_memory_idle_time[repeater] = time
+            for repeater in self.path_id_path_repeaters[self.path_id][1:-1]:
+                if len(self.each_path_each_repeater_swaped_memory_ages[self.path_id,repeater])==1:
+                    self.each_path_each_repeater_swaped_memory_ages[self.path_id,repeater] = []
+                else:
+                    self.each_path_each_repeater_swaped_memory_ages[self.path_id,repeater] = self.each_path_each_repeater_swaped_memory_ages[self.path_id,repeater][1:]
+            f_e2e=self.compute_f_e2e(each_repeater_left_right_memory_idle_time)
+            try:
+                self.each_path_all_delivered_pairs_fidelity[self.path_id].append(f_e2e)
+            except:
+                self.each_path_all_delivered_pairs_fidelity[self.path_id] = [f_e2e]
             for repeater in self.path_id_path_repeaters[path_id][1:-1]: 
                 if len(self.swap_list[repeater])==1:
                     self.swap_list[repeater] =[]
@@ -371,21 +414,21 @@ class System:
                 elif len(self.swap_list[repeater])>1:
                     self.swap_list[repeater] = self.swap_list[repeater][1:]
                     self.swap_start_sending_time_list[repeater] = self.swap_start_sending_time_list[repeater][1:]
-            self.each_path_swap_on_source_node_qubit_arrived[path_id]=False
-            self.each_path_swap_on_source_node_qubit_id[path_id] = -1
-            self.each_path_swap_on_end_node_qubit_id[path_id] = -1
+            self.each_path_swap_on_source_node_qubit_arrived[self.path_id]=False
+            self.each_path_swap_on_source_node_qubit_id[self.path_id] = -1
+            self.each_path_swap_on_end_node_qubit_id[self.path_id] = -1
             
-    def swap_operation(self,current_clock_counter,path_id,repeater):
+    def swap_operation(self,current_clock_counter,repeater):
         global global_printing_flag
         left_side_memory_ages = []
         right_side_memory_ages = []
         left_memory_objects = []
         right_memory_objects = []
-        for memory_id in range(self.each_path_memory_min[path_id],self.each_path_memory_max[path_id]):
-            left_side_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[path_id,repeater,"left",memory_id]
-            right_side_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[path_id,repeater,"right",memory_id]
-            node_left_memory_id_exist_flag = self.each_repeater_left_right_memory_exist_flag[path_id,repeater,"left",memory_id]
-            node_right_memory_id_exist_flag = self.each_repeater_left_right_memory_exist_flag[path_id,repeater,"right",memory_id]
+        for memory_id in range(self.each_path_memory_min[self.path_id],self.each_path_memory_max[self.path_id]):
+            left_side_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,repeater,"left",memory_id]
+            right_side_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,repeater,"right",memory_id]
+            node_left_memory_id_exist_flag = self.each_repeater_left_right_memory_exist_flag[self.path_id,repeater,"left",memory_id]
+            node_right_memory_id_exist_flag = self.each_repeater_left_right_memory_exist_flag[self.path_id,repeater,"right",memory_id]
             if node_left_memory_id_exist_flag:
                 if left_side_memory_object.EPR_age not in left_side_memory_ages:
                     left_side_memory_ages.append(left_side_memory_object.EPR_age)
@@ -409,17 +452,18 @@ class System:
                                 random_value  = random.uniform(0,1)
 #                                 print("turning the memory flag on right of %s to False as we did swap at %s "%(repeater,repeater))
 #                                 print("turning the memory flag on left of %s to False as we did swap at %s "%(repeater,repeater))
-                                self.each_repeater_left_right_memory_exist_flag[path_id,repeater,"right",right_memory_object.memory_id] =False
+                                self.each_repeater_left_right_memory_exist_flag[self.path_id,repeater,"right",right_memory_object.memory_id] =False
                             
-                                self.each_repeater_left_right_memory_exist_flag[path_id,repeater,"left",left_memory_object.memory_id] =False
+                                self.each_repeater_left_right_memory_exist_flag[self.path_id,repeater,"left",left_memory_object.memory_id] =False
                                 self.failed_at_least_one_link = False
                                 if random_value <=self.q_value:
                                     
-                                    left_entangled_node_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[path_id,left_memory_object.entangled_node,"right",left_memory_object.entangled_memory_id]
-                                    right_entangled_node_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[path_id,right_memory_object.entangled_node,"left",right_memory_object.entangled_memory_id]
+                                    left_entangled_node_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,left_memory_object.entangled_node,"right",left_memory_object.entangled_memory_id]
+                                    right_entangled_node_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,right_memory_object.entangled_node,"left",right_memory_object.entangled_memory_id]
 
                                     
-                                    self.send_a_message(repeater,path_id,"swap_result",left_memory_object.EPR_age,
+                                    self.send_a_message(repeater,"swap_result",
+                                                        left_memory_object.EPR_age,
                                                         right_memory_object.EPR_age,
                                                         left_memory_object.entangled_node,
                                                         right_memory_object.entangled_node,
@@ -432,12 +476,12 @@ class System:
                                     right_memory_object.EPR_age = -1
 #repeater
                                 elif random_value > self.q_value:
-                                    self.each_repeater_left_right_memory_exist_flag[path_id,repeater,"right",right_memory_object.memory_id] =False
-                                    self.each_repeater_left_right_memory_exist_flag[path_id,repeater,"left",left_memory_object.memory_id] =False
-                                    self.each_repeater_left_right_memory_exist_flag[path_id,left_memory_object.entangled_node,"right",left_memory_object.memory_id] =False
-                                    self.each_repeater_left_right_memory_exist_flag[path_id,right_memory_object.entangled_node,"left",right_memory_object.memory_id] =False
-                                    left_entangled_node_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[path_id,left_memory_object.entangled_node,"right",left_memory_object.entangled_memory_id]
-                                    right_entangled_node_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[path_id,right_memory_object.entangled_node,"left",right_memory_object.entangled_memory_id]
+                                    self.each_repeater_left_right_memory_exist_flag[self.path_id,repeater,"right",right_memory_object.memory_id] =False
+                                    self.each_repeater_left_right_memory_exist_flag[self.path_id,repeater,"left",left_memory_object.memory_id] =False
+                                    self.each_repeater_left_right_memory_exist_flag[self.path_id,left_memory_object.entangled_node,"right",left_memory_object.memory_id] =False
+                                    self.each_repeater_left_right_memory_exist_flag[self.path_id,right_memory_object.entangled_node,"left",right_memory_object.memory_id] =False
+                                    left_entangled_node_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,left_memory_object.entangled_node,"right",left_memory_object.entangled_memory_id]
+                                    right_entangled_node_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,right_memory_object.entangled_node,"left",right_memory_object.entangled_memory_id]
 
                                     left_entangled_node_memory_object.attempt_flag = False
                                     right_entangled_node_memory_object.attempt_flag = False
@@ -445,27 +489,175 @@ class System:
                                     right_memory_object.attempt_flag = False                    
                                     left_memory_object.EPR_age = -1
                                     right_memory_object.EPR_age = -1
-        self.check_swap_results_arrived(path_id,current_clock_counter)
-        self.check_all_swaps(path_id,current_clock_counter)
+        self.check_swap_results_arrived(current_clock_counter)
+        self.check_all_swaps(current_clock_counter)
         
-        
+
+    def compute_f_e2e(self,each_repeater_left_right_memory_idle_time):
+        if global_printing_flag:
+            print("each_repeater_left_right_memory_idle_time ",each_repeater_left_right_memory_idle_time)
+        product = 1
+        sum_of_time = 0
+        for repeater,left_right_time in each_repeater_left_right_memory_idle_time.items():
+            if global_printing_flag:
+                print("swap on repeater %s happended on qubits with age %s and %s "%(repeater,left_right_time[0],left_right_time[1]))
+            sum_of_time = sum_of_time+left_right_time[0]+left_right_time[1]
+            product = product*(2*self.F[self.path_id,repeater]-1)
+        t = sum_of_time/self.t_coh/1000000
+        exp = np.exp(-t)
+        f_e2e=1/2+1/2*(product)*(exp)
+        if global_printing_flag:
+            print("product %s sum T %s /t_coh %s exp %s fidelity %s "%(product,sum_of_time,t,exp,f_e2e))
+        return f_e2e
+    
+    def h(self,p):
+        return -p*math.log(p)-(1-p)*math.log(1-p)
+    def sekret_key(self,path_id,n,rate):
+        avg_e2e_f = sum(self.each_path_all_delivered_pairs_fidelity[path_id])/len(self.each_path_all_delivered_pairs_fidelity[path_id])
+        mu_e2e=(self.mu**n)*np.prod(self.mu_i[path_id])
+        e_x =(1+mu_e2e)/2-(mu_e2e*avg_e2e_f)
+        e_z=(1-mu_e2e)/2
+        r= 1-self.h(e_x)-self.h(e_z)
+        S = rate*r
+        if global_printing_flag:
+            print("for secret ket e_x %s e_z %s r %s rate %s S %s "%(e_x,e_z,r,rate,S))
+        return S,r,avg_e2e_f    
         
     def main(self):
         self.e2e_EPRs = 0
         for clock_counter in range(self.end_time):
             if clock_counter%5000==0:
                 print("mode %s cut_off %s link %s M %s clock %s End %s "%(self.mode,self.cut_off,self.each_link_length[(0,1)],self.each_path_memory_max[0],clock_counter,self.end_time))
-            for path_id,path_links in self.path_id_path_links.items():
-                for link in path_links:
-                    for memory_id in range(self.each_path_memory_min[path_id],self.each_path_memory_max[path_id]):
-                        left_memory_object  = self.each_path_repeater_left_right_memory_id_memory_object[path_id,link[0],"right",memory_id]
-                        right_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[path_id,link[1],"left",memory_id]
-                        self.update(path_id,link,memory_id,clock_counter)
-                for repeater in self.path_id_path_repeaters[path_id][1:-1]:
-                    self.swap_operation(clock_counter,path_id,repeater)
+            
+            for link in self.path_id_path_links[self.path_id]:
+                for memory_id in range(self.each_path_memory_min[self.path_id],self.each_path_memory_max[self.path_id]):
+                    left_memory_object  = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,link[0],"right",memory_id]
+                    right_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,link[1],"left",memory_id]
+                    self.update(link,memory_id,clock_counter)
+            for repeater in self.path_id_path_repeaters[self.path_id][1:-1]:
+                self.swap_operation(clock_counter,repeater)
+
+
+# In[41]:
+
+
+global_printing_flag = False
+
+each_R_path_repeaters = {1:{0:[0,1,2]},
+                         2:{0:[0,1,2,3]},
+                         3:{0:[0,1,2,3,4]},
+                         4:{0:[0,1,2,3,4,5]},
+                         5:{0:[0,1,2,3,4,5,6]},
+                         6:{0:[0,1,2,3,4,5,6,7]},
+                         7:{0:[0,1,2,3,4,5,6,7,8]},
+                         8:{0:[0,1,2,3,4,5,6,7,8,9]},
+                         9:{0:[0,1,2,3,4,5,6,7,8,9,10]}
+                        }
+
+each_R_path_links = {    1:{0:[(0,1),(1,2)]},
+                         2:{0:[(0,1),(1,2),(2,3)]},
+                         3:{0:[(0,1),(1,2),(2,3),(3,4)]},
+                         4:{0:[(0,1),(1,2),(2,3),(3,4),(4,5)]},
+                         5:{0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6)]},
+                         6:{0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7)]},
+                         7:{0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8)]},
+                         8:{0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8),(8,9)]},
+                         9:{0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8),(8,9),(9,10)]}
+                        }
+path_id_path_repeaters = {0:[0,1,2,3,4,5,6,7,8]}
+path_id_path_links = {0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8)]}
+for i in range(100):
+    for number_of_repeaters in [1,6,2,3,4,5,6,7,8,9]:
+    # for number_of_repeaters in [6]:
+        path_id_path_repeaters = each_R_path_repeaters[number_of_repeaters]
+        path_id_path_links =each_R_path_links[number_of_repeaters] 
+        each_path_source_destination = {0:[0,number_of_repeaters+1]}
+        initial_fidelity  = 0.95
+        experimenting_classical_communication = True
+        entanglement_generation_delay = True
+        having_cut_offs = True
+        results_file_path = "results/repeater_chain_skr_resultsv3.csv"
+        # for memory_max in [1,2,4,6,8,10,14,16]:
+        #     for cut_off in [50,60,70,80,90,100,110,120,130,140,150,200,300]:
+        #         for left_link_length in [4,6,8,10,12,14,16,18,20]:
+        for memory_max in [1]:
+#             for left_link_length in [110,120,130,140,150,160,170,180,190,200,100,50,1,200,300,5,10,20,30,40,50,60,70,80,90]:
+            for left_link_length in [50,20]:
+                each_link_length = {(0,1):left_link_length,(1,2):left_link_length,(2,3):left_link_length,
+                                    (3,4):left_link_length,
+                                   (4,5):left_link_length,
+                                   (5,6):left_link_length,
+                                    (6,7):left_link_length,
+                                   (7,8):left_link_length,
+                                   (8,9):left_link_length,
+                                   (9,10):left_link_length,
+                                   (10,11):left_link_length,
+                                   (11,12):left_link_length}
+                each_path_memory_min = {0:0}
+                each_path_memory_max= {0:memory_max}
+                running_time = 1000000
+                scheme = "asynch"
+                for path_id in path_id_path_links:
+                    if not having_cut_offs:
+                        system = System(scheme,path_id,running_time,1,1000,each_link_length,
+                                        each_path_memory_min,each_path_memory_max)
+                        system.main()
+                        e2e_rate = system.e2e_EPRs/running_time*1000000
+                        if e2e_rate>0:
+                            S,r,avg_e2e_f= system.sekret_key(path_id,number_of_repeaters,e2e_rate)
+                        else:
+                            S,r,avg_e2e_f = 0,0,0
+                        print("*****!!!!**** scheme %s L %s cut_off %s M %s time %s delivered %s e2e EPRs and e2e_rate %s SKR %s avg_e2e_f %s"%(scheme,left_link_length,
+                                                                                                                                    "no_cut_off",memory_max,
+                                                                                                                                    running_time,system.e2e_EPRs,
+                                                                                                                                    e2e_rate,S,avg_e2e_f))
+                        with open(results_file_path, 'a') as newFile:                                
+                            newFileWriter = csv.writer(newFile)
+                            newFileWriter.writerow([scheme,experimenting_classical_communication,
+                                                    having_cut_offs,
+                                                    number_of_repeaters,
+                                                    left_link_length,False,memory_max,running_time,
+                                                    e2e_rate,system.longest_link_duration,
+                                                   entanglement_generation_delay,
+                                                   S,r,avg_e2e_f])
+                    else:
+                        for cut_off in [500, 1000, 2000, 4000, 6000, 8000, 10000, 20000, 30000, 40000, 60000,80000,100000,140000,200000]:
+        #                 for cut_off in [500]:
+                            system = System(scheme,path_id,running_time,1,cut_off,each_link_length,
+                                            each_path_memory_min,each_path_memory_max)
+                            system.main()
+                            e2e_rate = system.e2e_EPRs/running_time*1000000
+                            if e2e_rate>0:
+                                S,r,avg_e2e_f= system.sekret_key(path_id,number_of_repeaters,e2e_rate)
+                            else:
+                                S,r,avg_e2e_f = 0,0,0                        
+                            print("*****!!!!**** scheme %s L %s cut_off %s M %s time %s delivered %s e2e EPRs and e2e_rate %s SKR %s avg_e2e_f %s"%(scheme,
+                                                                                                                                    left_link_length,
+                                                                                                                                    cut_off,
+                                                                                                                                    memory_max,
+                                                                                                                                    running_time,
+                                                                                                                                    system.e2e_EPRs,
+                                                                                                                                    e2e_rate,S,
+                                                                                                                                    avg_e2e_f))
+                            with open(results_file_path, 'a') as newFile:                                
+                                newFileWriter = csv.writer(newFile)
+                                newFileWriter.writerow([scheme,experimenting_classical_communication,
+                                                        having_cut_offs,
+                                                        number_of_repeaters,
+                                                        left_link_length,cut_off,memory_max,running_time,
+                                                        e2e_rate,system.longest_link_duration,
+                                                       entanglement_generation_delay,path_id,
+                                                       S,r,avg_e2e_f])
+            
 
 
 # In[ ]:
+
+
+
+
+
+# In[10]:
 
 
 # global_printing_flag = False
@@ -567,95 +759,10 @@ class System:
             
 
 
-# In[7]:
+# In[13]:
 
 
-global_printing_flag = False
 
-each_R_path_repeaters = {1:{0:[0,1,2]},
-                         2:{0:[0,1,2,3]},
-                         3:{0:[0,1,2,3,4]},
-                         4:{0:[0,1,2,3,4,5]},
-                         5:{0:[0,1,2,3,4,5,6]},
-                         6:{0:[0,1,2,3,4,5,6,7]},
-                         7:{0:[0,1,2,3,4,5,6,7,8]},
-                         8:{0:[0,1,2,3,4,5,6,7,8,9]},
-                         9:{0:[0,1,2,3,4,5,6,7,8,9,10]}
-                        }
-
-each_R_path_links = {    1:{0:[(0,1),(1,2)]},
-                         2:{0:[(0,1),(1,2),(2,3)]},
-                         3:{0:[(0,1),(1,2),(2,3),(3,4)]},
-                         4:{0:[(0,1),(1,2),(2,3),(3,4),(4,5)]},
-                         5:{0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6)]},
-                         6:{0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7)]},
-                         7:{0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8)]},
-                         8:{0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8),(8,9)]},
-                         9:{0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8),(8,9),(9,10)]}
-                        }
-path_id_path_repeaters = {0:[0,1,2,3,4,5,6,7,8]}
-path_id_path_links = {0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8)]}
-
-for number_of_repeaters in [1,6,2,3,4,5,6,7,8,9]:
-    path_id_path_repeaters = each_R_path_repeaters[number_of_repeaters]
-    path_id_path_links =each_R_path_links[number_of_repeaters] 
-    each_path_source_destination = {0:[0,number_of_repeaters+1]}
-    initial_fidelity  = 0.95
-    experimenting_classical_communication = True
-    entanglement_generation_delay = True
-    having_cut_offs = True
-    results_file_path = "results/repeater_chain_results_final.csv"
-    # for memory_max in [1,2,4,6,8,10,14,16]:
-    #     for cut_off in [50,60,70,80,90,100,110,120,130,140,150,200,300]:
-    #         for left_link_length in [4,6,8,10,12,14,16,18,20]:
-    for memory_max in [1]:
-        for left_link_length in [1,50,100,5,10,20,30,40,50,15,25,35,45,55,60,65,70,75,80,90,200,300,400,500,600,700,800]:
-#         for left_link_length in [10]:
-            each_link_length = {(0,1):left_link_length,(1,2):left_link_length,(2,3):left_link_length,
-                                (3,4):left_link_length,
-                               (4,5):left_link_length,
-                               (5,6):left_link_length,
-                                (6,7):left_link_length,
-                               (7,8):left_link_length,
-                               (8,9):left_link_length,
-                               (9,10):left_link_length,
-                               (10,11):left_link_length,
-                               (11,12):left_link_length}
-            each_path_memory_min = {0:0}
-            each_path_memory_max= {0:memory_max}
-            running_time = 12000000
-            scheme = "asynch"
-            if not having_cut_offs:
-                system = System(scheme,running_time,1,1000,each_link_length,
-                                each_path_memory_min,each_path_memory_max)
-                system.main()
-                e2e_rate = system.e2e_EPRs/running_time
-                print("*****!!!!**** scheme %s L %s cut_off %s M %s time %s delivered %s e2e EPRs and e2e_rate %s"%(scheme,left_link_length,"no_cut_off",memory_max,running_time,system.e2e_EPRs,e2e_rate))
-                with open(results_file_path, 'a') as newFile:                                
-                    newFileWriter = csv.writer(newFile)
-                    newFileWriter.writerow([scheme,experimenting_classical_communication,
-                                            having_cut_offs,
-                                            number_of_repeaters,
-                                            left_link_length,False,memory_max,running_time,
-                                            e2e_rate,system.longest_link_duration,
-                                           entanglement_generation_delay])
-            else:
-#                 for cut_off in [500, 1000, 2000, 3000, 4000, 5000, 6000, 8000, 10000, 20000, 30000, 40000, 60000]:
-                for cut_off in [80000,100000,140000,200000]:
-                    system = System(scheme,running_time,1,cut_off,each_link_length,
-                                    each_path_memory_min,each_path_memory_max)
-                    system.main()
-                    e2e_rate = system.e2e_EPRs/running_time
-                    print("*****!!!!**** scheme %s L %s cut_off %s M %s time %s delivered %s e2e EPRs and e2e_rate %s"%(scheme,left_link_length,cut_off,memory_max,running_time,system.e2e_EPRs,e2e_rate))
-                    with open(results_file_path, 'a') as newFile:                                
-                        newFileWriter = csv.writer(newFile)
-                        newFileWriter.writerow([scheme,experimenting_classical_communication,
-                                                having_cut_offs,
-                                                number_of_repeaters,
-                                                left_link_length,cut_off,memory_max,running_time,
-                                                e2e_rate,system.longest_link_duration,
-                                               entanglement_generation_delay])
-            
 
 
 # In[ ]:
