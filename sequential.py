@@ -16,7 +16,7 @@ import math
 
 
 class Memory:
-    def __init__(self,mode,repeater_id,entangled_node,memory_id,longest_link_duration,
+    def __init__(self,mode,repeater_id,entangled_node,memory_id,link_duration,
                  attached_link_duration,initial_fidelity,
                  EPR_gen_success_p,cut_off):
         self.mode = mode
@@ -33,8 +33,8 @@ class Memory:
         self.attached_link_duration = attached_link_duration # how long it takes to send photon one way
         self.attempt_success_p = EPR_gen_success_p
         self.cut_off = cut_off
-        self.longest_link_duration = longest_link_duration
-        self.each_time_slot_duration = 3*longest_link_duration
+        self.link_duration = link_duration
+        self.each_time_slot_duration = 3*link_duration
         
         
 class Message:
@@ -65,6 +65,7 @@ class Message:
 class System:
     def __init__(self,mode,path_id,end_time,q_value,cut_off,each_link_length,each_path_memory_min,each_path_memory_max):
         self.mode = mode
+        self.considering_end_nodes_idle_time = considering_end_nodes_idle_time
         self.path_id = path_id
         self.end_time = end_time
         self.experimenting_classical_communication = experimenting_classical_communication
@@ -73,9 +74,11 @@ class System:
         self.q_value = q_value
         self.e2e_EPRs = 0
         self.clock_counter = 0
+        self.expired_qubits_counter = 0
         self.synchronous_flag = False
         self.initial_fidelity = initial_fidelity 
         self.cut_off= cut_off
+        self.all_delivery_durations = []
         self.path_id_path_repeaters =path_id_path_repeaters
         self.path_id_path_links = path_id_path_links
         self.each_path_source_destination = each_path_source_destination
@@ -104,7 +107,7 @@ class System:
         self.each_path_each_repeater_swaped_memory_ages ={}
         self.t_coh = 0.1
         self.F = {}
-        
+        self.each_repeater_left_right_memories_waiting_times = {}
         self.mu_i = {}
         self.mu = 0.97
 #         for repeater in [1]:
@@ -153,10 +156,10 @@ class System:
 #                     link_success_p = 1
                 link_duration = int((1.44*length)/ 299792*1000000)
                 left_memory_object_instanse = Memory(self.mode,link[0],link[1],memory_id,
-                                                     self.longest_link_duration,
+                                                     link_duration,
                                        link_duration,self.initial_fidelity,
                                        link_success_p,self.cut_off)
-                right_memory_object_instanse = Memory(self.mode,link[1],link[0],memory_id,self.longest_link_duration,
+                right_memory_object_instanse = Memory(self.mode,link[1],link[0],memory_id,link_duration,
                                        link_duration,self.initial_fidelity,
                                        link_success_p,self.cut_off)
                 self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,link[0],"right",memory_id] = left_memory_object_instanse
@@ -186,7 +189,7 @@ class System:
         right_memory_object.attempt_start_time = left_memory_object.attempt_start_time
         right_memory_object.attempt_finishing_time = left_memory_object.attempt_finishing_time
         right_memory_object.initial_fidelity = left_memory_object.initial_fidelity
-        right_memory_object.longest_link_duration = left_memory_object.longest_link_duration
+        right_memory_object.link_duration = left_memory_object.link_duration
         right_memory_object.each_time_slot_duration = left_memory_object.each_time_slot_duration
         
     def update(self,link,memory_id,current_clock_counter):
@@ -285,7 +288,7 @@ class System:
                 self.each_repeater_left_right_memory_exist_flag[self.path_id,link[1],"left",memory_id] =False
                 if left_memory_object.mode =="synch1" or left_memory_object.mode =="synch2":
                     if self.experimenting_classical_communication:
-                        left_memory_object.attempt_finishing_time = current_clock_counter+2*left_memory_object.longest_link_duration
+                        left_memory_object.attempt_finishing_time = current_clock_counter+2*left_memory_object.link_duration
                     else:
                         left_memory_object.attempt_finishing_time = current_clock_counter+1
                 else:
@@ -352,8 +355,8 @@ class System:
                         left_memory_object.attempt_flag = False
                         generated_flag = True
                         if left_memory_object.mode =="synch1" or left_memory_object.mode =="synch2":
-                            left_memory_object.EPR_age = 2*left_memory_object.longest_link_duration
-                            right_memory_object.EPR_age = 1*left_memory_object.longest_link_duration
+                            left_memory_object.EPR_age = 2*left_memory_object.link_duration
+                            right_memory_object.EPR_age = 1*left_memory_object.link_duration
                         else:
                             if self.entanglement_generation_delay:
                                 left_memory_object.EPR_age = 2*left_memory_object.attached_link_duration
@@ -600,26 +603,78 @@ class System:
         sum_of_time = 0
         for repeater,left_right_time in each_repeater_left_right_memory_idle_time.items():
             if global_printing_flag:
-                print("swap on repeater %s happended on qubits with age %s and %s "%(repeater,left_right_time[0],left_right_time[1]))
-            sum_of_time = sum_of_time+left_right_time[0]+left_right_time[1]
+                tau = 2*self.longest_link_duration
+                if printing_qubit_aging_flag:
+                    print("swap on repeater %s happened on qubits with age %s and %s 2_tau is %s have %s Rs "%(repeater,
+                                                                                                left_right_time[0],
+                                                                                                left_right_time[1],
+                                                                                                tau,
+                                                                                                len(list(each_repeater_left_right_memory_idle_time.keys()))))
+            sum_of_time = sum_of_time+left_right_time[0]+left_right_time[1]#(4,10)
+            try:
+                self.each_repeater_left_right_memories_waiting_times[self.path_id,repeater].append(left_right_time)
+            except:
+                self.each_repeater_left_right_memories_waiting_times[self.path_id,repeater] = [left_right_time]
             product = product*(2*self.F[self.path_id,repeater]-1)
-        t = sum_of_time/self.t_coh/1000000
+        source = self.each_path_source_destination[self.path_id][0]
+        destination = self.each_path_source_destination[self.path_id][1]
+        source_right_memory_object  = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,source,"right",0]
+        destination_left_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,destination,"left",0]
+
+        source_left_right_time = (0,source_right_memory_object.EPR_age)
+        destination_left_right_time = (destination_left_memory_object.EPR_age,0)
+        if global_printing_flag:
+            T= 0
+            e2e = 0
+            for link in self.path_id_path_links[self.path_id]:
+                length = self.each_link_length[link]
+                link_duration = int(length/2e5*1000000)
+                e2e = e2e+link_duration
+                T = T+2*link_duration
+            analytic_bob = e2e
+            analytic_alice = T
+            print("end node source destination idle time %s %s analytic idle time %s %s "%(source_right_memory_object.EPR_age,
+                                                                                        analytic_alice,
+                                                                                       destination_left_memory_object.EPR_age,
+                                                                                        analytic_bob
+                                                                                           
+                                                                                      ))
+        try:
+            self.each_repeater_left_right_memories_waiting_times[self.path_id,source].append(source_left_right_time)
+        except:
+            self.each_repeater_left_right_memories_waiting_times[self.path_id,source] = [source_left_right_time]
+        try:
+            self.each_repeater_left_right_memories_waiting_times[self.path_id,destination].append(destination_left_right_time)
+        except:
+            self.each_repeater_left_right_memories_waiting_times[self.path_id,destination] = [destination_left_right_time]
+        if self.considering_end_nodes_idle_time:
+            sum_of_time = sum_of_time+source_left_right_time[1]+destination_left_right_time[0]
+        t = (sum_of_time/self.t_coh)/1000000
         exp = np.exp(-t)
-        f_e2e=1/2+1/2*(product)*(exp)
-        #if global_printing_flag:
-#         print("product %s sum T %s /t_coh %s exp %s fidelity %s "%(product,sum_of_time,t,exp,f_e2e))
+        f_e2e=1/2+1/2*(exp)
+        if global_printing_flag:
+            print("product %s sum T %s /t_coh %s exp %s fidelity %s "%(product,sum_of_time,t,exp,f_e2e))
         return f_e2e
     
     
     def sekret_key(self,path_id,n,rate):
+        # avg_e2e_f = sum(self.each_path_all_delivered_pairs_fidelity[path_id])/len(self.each_path_all_delivered_pairs_fidelity[path_id])
+        # mu_e2e=self.mu**n*np.prod(self.mu_i[path_id])
+        # F_e2e = mu_e2e*avg_e2e_f+(1-mu_e2e)/4
+        # e_x =(1+mu_e2e)/2-mu_e2e*avg_e2e_f
+        # e_z=(1-mu_e2e)/2
+        # r= 1-self.h(e_x)-self.h(e_z)
+        # S = rate*r
+        # return S,r,avg_e2e_f
         avg_e2e_f = sum(self.each_path_all_delivered_pairs_fidelity[path_id])/len(self.each_path_all_delivered_pairs_fidelity[path_id])
-        mu_e2e=self.mu**n*np.prod(self.mu_i[path_id])
-        F_e2e = mu_e2e*avg_e2e_f+(1-mu_e2e)/4
-        e_x =(1+mu_e2e)/2-mu_e2e*avg_e2e_f
+        mu_e2e=(self.mu**n)*np.prod(self.mu_i[self.path_id])
+        
+        e_x =(1+mu_e2e)/2-(mu_e2e*avg_e2e_f)
         e_z=(1-mu_e2e)/2
         r= 1-self.h(e_x)-self.h(e_z)
         S = rate*r
-        return S,r,avg_e2e_f
+        return S,r,avg_e2e_f,e_x,e_z 
+        
         
     def main(self):
         self.e2e_EPRs = 0
@@ -680,6 +735,82 @@ class System:
             current_clock_counter+=1
 
 
+# In[ ]:
+
+
+def rand_repeater_chain(distance,Nrepeater,min_dist = 2):
+    repeater_loc = np.concatenate(([0],np.sort(np.random.rand(Nrepeater)),[1]))*distance
+    while np.min(np.diff(repeater_loc))< min_dist:
+        repeater_loc = np.concatenate(([0],np.sort(np.random.rand(Nrepeater)),[1]))*distance    
+    return repeater_loc
+    # distance = 100 # in km
+    # Nrepeater = 6
+    
+    
+def compute_edges(experiment,distance,Nrepeater):
+    each_edge_length = {}
+    if experiment=="random_placement":
+        left_link_length = 0
+        each_link_length = {(0,1):left_link_length,(1,2):left_link_length,(2,3):left_link_length,
+                    (3,4):left_link_length,
+                   (4,5):left_link_length,
+                   (5,6):left_link_length,
+                    (6,7):left_link_length,
+                   (7,8):left_link_length,
+                   (8,9):left_link_length,
+                   (9,10):left_link_length,
+                   (10,11):left_link_length,
+                   (11,12):left_link_length}
+
+        locs = rand_repeater_chain(distance,Nrepeater)
+        locs = np.array(locs)
+        print(locs)
+        point = locs[0]
+        repeater_indx = 0
+        for place in locs[1:]:
+            print("length is ",place-point)
+            each_link_length[(repeater_indx,repeater_indx+1)] = place-point
+            repeater_indx +=1
+            point  = place
+        return each_link_length,[distance]
+    elif experiment =="equal":
+        new_n = (2+(Nrepeater-1))
+        left_link_length = np.array([distance/new_n]*new_n)
+        left_link_length = left_link_length[0]
+
+        each_link_length = {(0,1):left_link_length,(1,2):left_link_length,(2,3):left_link_length,
+                    (3,4):left_link_length,
+                   (4,5):left_link_length,
+                   (5,6):left_link_length,
+                    (6,7):left_link_length,
+                   (7,8):left_link_length,
+                   (8,9):left_link_length,
+                   (9,10):left_link_length,
+                   (10,11):left_link_length,
+                   (11,12):left_link_length}
+
+        return each_edge_length,[distance]
+    elif experiment =="repeater_position":
+        δ = 0.1
+        rep_loc = np.linspace(δ,1-δ,40)
+        Le2e = distance
+        L1 = pos*Le2e
+        L2 = Le2e - L1
+        L0 = pos
+        left_link_length = L1
+        each_link_length = {(0,1):left_link_length,(1,2):L2,(2,3):left_link_length,
+                    (3,4):left_link_length,
+                   (4,5):left_link_length,
+                   (5,6):left_link_length,
+                    (6,7):left_link_length,
+                   (7,8):left_link_length,
+                   (8,9):left_link_length,
+                   (9,10):left_link_length,
+                   (10,11):left_link_length,
+                   (11,12):left_link_length}
+        return each_link_length,rep_loc
+
+
 # In[5]:
 
 
@@ -704,92 +835,126 @@ each_R_path_links = {    1:{0:[(0,1),(1,2)]},
                          6:{0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7)]},
                          7:{0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8)]},
                          8:{0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8),(8,9)]},
-                         9:{0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8),(8,9),(9,10)]}
+                         9:{0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8),(8,9),(9,10)]},
+                        10:{0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8),(8,9),(9,10),(10,11)]}
                         }
-path_id_path_repeaters = {0:[0,1,2,3,4,5,6,7,8]}
-path_id_path_links = {0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8)]}
-for i in range(100):
-    for number_of_repeaters in [1,6,2,3,4,5,7,8,9]:
-    # for number_of_repeaters in [1]:
+path_id_path_repeaters = {0:[0,1,2,3,4,5,6,7,8,9,10,11]}
+path_id_path_links = {0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8),(8,9),(9,10),(10,11)]}
+experiment_name = "random_placement"
+results_file_path = "results/repeater_chain_results_with_cut_off_sanity_check.csv"
+results_file_path = "results/fixed_distance_random_repeater_location.csv"
+for iteration in range(1000):
+    for number_of_repeaters in [1,2,4,6,8]:    # for number_of_repeaters in [1]:
         path_id_path_repeaters = each_R_path_repeaters[number_of_repeaters]
         path_id_path_links =each_R_path_links[number_of_repeaters] 
         each_path_source_destination = {0:[0,number_of_repeaters+1]}
-        initial_fidelity  = 0.95
+        initial_fidelity  = 1
         experimenting_classical_communication = True
         entanglement_generation_delay = True
         having_cut_offs = True
-        results_file_path = "results/repeater_chain_skr_resultsv3.csv"
+        considering_end_nodes_idle_time = False
         # for memory_max in [1,2,4,6,8,10,14,16]:
         #     for cut_off in [50,60,70,80,90,100,110,120,130,140,150,200,300]:
         #         for left_link_length in [4,6,8,10,12,14,16,18,20]:
         for memory_max in [1]:
-#             for left_link_length in [110,120,130,140,150,160,170,180,190,200,100,50,1,200,300,5,10,20,30,40,50,60,70,80,90]:
-            for left_link_length in [50,20]:
-                each_link_length = {(0,1):left_link_length,(1,2):left_link_length,(2,3):left_link_length,
-                                    (3,4):left_link_length,
-                                   (4,5):left_link_length,
-                                   (5,6):left_link_length,
-                                   (6,7):left_link_length,
-                                   (7,8):left_link_length,
-                                   (8,9):left_link_length,
-                                   (9,10):left_link_length,
-                                   (10,11):left_link_length,
-                                   (11,12):left_link_length}
-                each_path_memory_min = {0:0}
-                each_path_memory_max= {0:memory_max}
-                running_time = 1000000
-                scheme = "sequential"
-                for path_id in path_id_path_links:
-                    if not having_cut_offs:
-                        system = System(scheme,path_id,running_time,1,1000,each_link_length,
-                                        each_path_memory_min,each_path_memory_max)
-                        system.main()
-                        e2e_rate = system.e2e_EPRs/running_time*1000000
-                        if e2e_rate>0:
-                            S,r,avg_e2e_f= system.sekret_key(path_id,number_of_repeaters,e2e_rate)
-                        else:
-                            S,r,avg_e2e_f = 0,0,0
-                        print("scheme %s L %s cut_off %s M %s time %s delivered %s e2e EPRs and e2e_rate %s SKR %s avg_e2e_f %s"%(scheme,left_link_length,
-                                                                                                                                    "no_cut_off",memory_max,
-                                                                                                                                    running_time,system.e2e_EPRs,
-                                                                                                                                    e2e_rate,S,avg_e2e_f))
-                        with open(results_file_path, 'a') as newFile:                                
-                            newFileWriter = csv.writer(newFile)
-                            newFileWriter.writerow([scheme,experimenting_classical_communication,
-                                                    having_cut_offs,
-                                                    number_of_repeaters,
-                                                    left_link_length,False,memory_max,running_time,
-                                                    e2e_rate,system.longest_link_duration,
-                                                   entanglement_generation_delay,
-                                                   S,r,avg_e2e_f])
-                    else:
-                        for cut_off in [500, 1000, 2000, 4000, 6000, 8000, 10000, 20000, 30000, 40000, 60000,80000,100000,140000,200000]:
-        #                 for cut_off in [500]:
-                            system = System(scheme,path_id,running_time,1,cut_off,each_link_length,
+            L0_list = np.linspace(10,800,101)
+            L0_list = [100,200]
+            for i, L0 in enumerate(L0_list):
+                each_link_length,rep_loc = compute_edges(experiment_name,L0,number_of_repeaters)
+                print("each_link_length,rep_loc",each_link_length,rep_loc)
+                import pdb
+                # pdb.set_trace()
+                for j, pos in enumerate(rep_loc):
+                    
+                    each_path_memory_min = {0:0}
+                    each_path_memory_max= {0:memory_max}
+                    running_time = 10000000
+                    scheme = "sequential"
+                    for path_id in path_id_path_links:
+                        if not having_cut_offs:
+                            system = System(scheme,path_id,running_time,1,1000,each_link_length,
                                             each_path_memory_min,each_path_memory_max)
                             system.main()
                             e2e_rate = system.e2e_EPRs/running_time*1000000
                             if e2e_rate>0:
-                                S,r,avg_e2e_f= system.sekret_key(path_id,number_of_repeaters,e2e_rate)
+                                S,r,avg_e2e_f,e_x,e_z= system.sekret_key(path_id,number_of_repeaters,e2e_rate)
                             else:
-                                S,r,avg_e2e_f = 0,0,0                        
-                            print("scheme %s L %s cut_off %s M %s time %s delivered %s e2e EPRs and e2e_rate %s SKR %s avg_e2e_f %s"%(scheme,
-                                                                                                                                    left_link_length,
-                                                                                                                                    cut_off,
-                                                                                                                                    memory_max,
-                                                                                                                                    running_time,
-                                                                                                                                    system.e2e_EPRs,
-                                                                                                                                    e2e_rate,S,
-                                                                                                                                    avg_e2e_f))
+                                S,r,avg_e2e_f,e_x,e_z = 0,0,0,0,0
+                            try:
+                                rate_of_generating_first_segment = mean(system.successfull_first_segment_geenration_times)
+                                number_of_successful = len(system.successfull_first_segment_geenration_times)
+                            except:
+                                rate_of_generating_first_segment = 0
+                                number_of_successful = 0
+                            if len(system.all_delivery_durations)!=0:
+                                avg_T = sum(system.all_delivery_durations)/len(system.all_delivery_durations)
+                            else:
+                                avg_T = 0
+                                
+                            print("scheme %s L %s cut_off %s M %s time %s delivered %s e2e EPRs and e2e_rate %s SKR %s avg_e2e_f %s"%(scheme,L0,
+                                                                                                                                        "no_cut_off",memory_max,
+                                                                                                                                        running_time,system.e2e_EPRs,
+                                                                                                                                        e2e_rate,S,avg_e2e_f))
                             with open(results_file_path, 'a') as newFile:                                
                                 newFileWriter = csv.writer(newFile)
                                 newFileWriter.writerow([scheme,experimenting_classical_communication,
                                                         having_cut_offs,
                                                         number_of_repeaters,
-                                                        left_link_length,cut_off,memory_max,running_time,
+                                                        False,memory_max,running_time,
                                                         e2e_rate,system.longest_link_duration,
-                                                       entanglement_generation_delay,path_id,
-                                                       S,r,avg_e2e_f])
+                                                       entanglement_generation_delay,
+                                                       S,r,avg_e2e_f,L0,avg_T,
+                                                       e_x,e_z,
+                                             system.expired_qubits_counter,
+                                         rate_of_generating_first_segment,
+                                             number_of_successful,experiment_name,iteration,i , j])
+                        else:
+                            # for cut_off in [500, 1000, 2000, 4000, 6000, 8000, 10000, 20000, 30000, 40000, 60000,80000,100000,140000,200000]:
+                            # for cut_off in range(1,100,5):
+                            for cut_off in [50,5,10]:
+                                cut_off = cut_off*1000
+                                system = System(scheme,path_id,running_time,1,cut_off,each_link_length,
+                                                each_path_memory_min,each_path_memory_max)
+                                system.main()
+                                e2e_rate = system.e2e_EPRs/running_time*1000000
+                                if e2e_rate>0:
+                                    S,r,avg_e2e_f,e_x,e_z= system.sekret_key(path_id,number_of_repeaters,e2e_rate)
+                                else:
+                                    S,r,avg_e2e_f,e_x,e_z = 0,0,0,0,0
+                                try:
+                                    rate_of_generating_first_segment = mean(system.successfull_first_segment_geenration_times)
+                                    number_of_successful = len(system.successfull_first_segment_geenration_times)
+                                except:
+                                    rate_of_generating_first_segment = 0
+                                    number_of_successful = 0
+                                if len(system.all_delivery_durations)!=0:
+                                    avg_T = sum(system.all_delivery_durations)/len(system.all_delivery_durations)
+                                else:
+                                    avg_T = 0
+                                print("scheme %s L %s cut_off %s M %s time %s delivered %s e2e EPRs and e2e_rate %s SKR %s avg_e2e_f %s"%(scheme,
+                                                                                                                                        L0,
+                                                                                                                                        cut_off,
+                                                                                                                                        memory_max,
+                                                                                                                                        running_time,
+                                                                                                                                        system.e2e_EPRs,
+                                                                                                                                        e2e_rate,S,
+                                                                                                                                        avg_e2e_f))
+                                # print("we done with L %s "%(L0))
+                                # time.sleep(20)
+                                with open(results_file_path, 'a') as newFile:                                
+                                    newFileWriter = csv.writer(newFile)
+                                    newFileWriter.writerow([scheme,experimenting_classical_communication,
+                                                            having_cut_offs,
+                                                            number_of_repeaters,
+                                                            cut_off,memory_max,running_time,
+                                                            e2e_rate,system.longest_link_duration,
+                                                           entanglement_generation_delay,path_id,
+                                                           S,r,avg_e2e_f,L0,avg_T,e_x,e_z,
+                                             system.expired_qubits_counter,
+                                         rate_of_generating_first_segment,
+                                             number_of_successful,experiment_name,iteration,i , j])
+                                print("we appended!")
+                                # time.sleep(100)
             
 
 
