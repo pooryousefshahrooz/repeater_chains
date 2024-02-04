@@ -1053,6 +1053,7 @@ class System:
                                 if global_printing_flag:
                                     print("how long it takes to receive the expiration message ",self.expiration_message_arriving_time)
                                     print("we have one expired qubit. Lets move the time to the point the expiration message arrives at sender ",current_clock_counter,self.expiration_message_arriving_time,self.expiration_message_arriving_time)
+                                    time.sleep(5)
                                 current_clock_counter = self.expiration_message_arriving_time
                                 # if max(self.last_generated_expiration_message+self.e2e_communication_duration,self.last_be_geenrated_time+self.e2e_communication_duration) <= clock_counter:
                                 #if self.last_generated_expiration_message+self.e2e_communication_duration <= current_clock_counter:
@@ -1071,7 +1072,11 @@ class System:
                                         self.make_all_memories_free()
                                         self.all_generated_flag = False
                                         self.swap_operation_is_performed_flag = False
-                                        self.last_generated_expiration_message = current_clock_counter
+                                self.last_generated_expiration_message = current_clock_counter
+                                self.one_failed_round_times.append(current_clock_counter-self.last_failed_time)
+                                self.last_failed_time = current_clock_counter
+                                self.last_delivered_e2e_epr_time = current_clock_counter
+                            
                             if not expired_qubit:
                                 current_clock_counter+=self.time_granularity_value
                             if current_clock_counter%100000<=self.time_granularity_value:
@@ -1269,16 +1274,16 @@ path_id_path_repeaters = {0:[0,1,2,3,4,5,6,7,8,9,10,11]}
 path_id_path_links = {0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8),(8,9),(9,10),(10,11)]}
 
 
-time_granularity_value = 3
+
 experiment_name = "random_placement"
 experiment_name="repeater_position"
 # experiment_name="equal"
 L0_list = np.linspace(10,800,101)
 L0_list = [250]
-
+time_granularity_value = 1
 # results_file_path = "results/fixed_distance_random_repeater_placementv2.csv"
 results_file_path = "results/one_repeater_plaement_adjusting_exp_testing.csv"
-results_file_path = "results/one_repeater_plaement_all_metrics_timestep_3.csv"
+results_file_path = "results/one_repeater_plaement_all_metrics_timestep_1.csv"
 # results_file_path = "results/7_repeaters_equal_distance_no_cutoff.csv"
 for iteration in range(100):
     for number_of_repeaters in [1]:    # for number_of_repeaters in [1]:
@@ -1301,7 +1306,7 @@ for iteration in range(100):
                 import pdb
                 # pdb.set_trace()
                 for j, pos in enumerate(rep_loc):
-                    if pos>=0.4:
+                    if pos>=0.5:
                         if experiment_name =="repeater_position":
                             Le2e = L0_list[0]
                             L1 = pos*Le2e
@@ -1393,7 +1398,7 @@ for iteration in range(100):
                                     if len(system.all_delivery_durations)!=0:
                                         avg_T = sum(system.all_delivery_durations)/len(system.all_delivery_durations)
                                     else:
-                                        avg_T = 0
+                                        avg_T = -1
                                     print("scheme %s L %s cut_off %s M %s time %s delivered %s e2e EPRs and e2e_rate %s SKR %s avg_e2e_f %s"%(scheme,
                                                                                                                                             L0,
                                                                                                                                             cut_off,

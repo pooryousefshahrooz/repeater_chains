@@ -1025,9 +1025,9 @@ class System:
                 self.check_all_swaps(clock_counter)
                 if not self.none_expired():
                     # if max(self.last_generated_expiration_message+self.e2e_communication_duration,self.last_be_geenrated_time+self.e2e_communication_duration) <= clock_counter:
-                    if self.last_generated_expiration_message+self.e2e_communication_duration <= clock_counter:
-                    # if self.expiration_message_arriving_time<=clock_counter:
-                        #print("lets free all memories and start a new round")
+                    # if self.last_generated_expiration_message+self.e2e_communication_duration <= clock_counter:
+                    if self.expiration_message_arriving_time<=clock_counter:
+                        # print("lets free all memories and start a new round")
                         if global_go_to_sleep_flag:
                             time.sleep(2)
                         for link in self.path_id_path_links[self.path_id]:
@@ -1043,7 +1043,12 @@ class System:
                                 self.swap_operation_is_performed_flag = False
                                 self.last_generated_expiration_message = clock_counter
                 
-
+                        self.one_failed_round_times.append(clock_counter-self.last_failed_time)
+                        # print("*******************************we failed and it took %s for us to fail at time %s "%(clock_counter-self.last_failed_time,clock_counter))
+                        # time.sleep(5)
+                        self.last_failed_time = clock_counter
+                        self.last_delivered_e2e_epr_time = clock_counter
+                        self.last_generated_expiration_message = clock_counter
 
 
 
@@ -1262,10 +1267,10 @@ experiment_name="repeater_position"
 # experiment_name="equal"
 L0_list = np.linspace(10,800,101)
 L0_list = [250]
-time_granularity_value = 3
+time_granularity_value = 1
 
 results_file_path = "results/fixed_distance_random_repeater_placement_parallel_scheme.csv"
-results_file_path = "results/one_repeater_plaement_all_metrics_timestep_3.csv"
+results_file_path = "results/one_repeater_plaement_all_metrics_timestep_1.csv"
 # results_file_path = "results/7_repeaters_equal_distance_no_cutoff.csv"
 for iteration in range(100):
     for number_of_repeaters in [1]:
@@ -1307,7 +1312,7 @@ for iteration in range(100):
                         
                         each_path_memory_min = {0:0}
                         each_path_memory_max= {0:memory_max}
-                        running_time = 2000000000
+                        running_time = 100000000
                         # print(pos,each_link_length[(0,1)],each_link_length[(1,2)])
                        
                         scheme = "parallel"
@@ -1451,17 +1456,21 @@ for iteration in range(100):
                                                                                                                                                 e2e_rate,S,avg_e2e_f,
                                                                                                                                           avg_T/1000,
                                                                                                                                           system.expired_qubits_counter))
-                                    # if system.one_successful_round_times:
-                                    #     avg_success_T = sum(system.one_successful_round_times)/len(system.one_successful_round_times)
-                                    # else:
-                                    #     avg_success_T = 0
-                                    # Ns = len(system.one_successful_round_times)
-                                    # Nf=len(system.one_failed_round_times)
-                                    # if system.one_failed_round_times:
-                                    #     avg_fail_T = sum(system.one_failed_round_times)/len(system.one_failed_round_times)
-                                    # else:
-                                    #     avg_fail_T = 0
-                                   
+                                    if system.one_successful_round_times:
+                                        avg_success_T = sum(system.one_successful_round_times)/len(system.one_successful_round_times)
+                                    else:
+                                        avg_success_T = -1
+                                    Ns = len(system.one_successful_round_times)
+                                    Nf=len(system.one_failed_round_times)
+                                    if system.one_failed_round_times:
+                                        avg_fail_T = sum(system.one_failed_round_times)/len(system.one_failed_round_times)
+                                    else:
+                                        avg_fail_T = -1
+                                    line_items.append(Ns)
+                                    line_items.append(avg_success_T)
+                                    line_items.append(Nf)
+                                    line_items.append(avg_fail_T)
+                                
                                     import pdb
                                     #pdb.set_trace()
                                     # if global_go_to_sleep_flag:
