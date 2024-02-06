@@ -1011,6 +1011,9 @@ class System:
             # except:
             #     self.each_path_each_repeater_swaped_memory_ages[self.path_id,repeater] = [(left_age,right_age)]
             self.message_channel.remove(message)
+
+        for repeater in self.path_id_path_repeaters[self.path_id][1:-1]:
+            self.swap_list[repeater]=[]
         self.global_expiration_flag = False
         if global_printing_flag:
             print("***************************we maid all memories free *****************")
@@ -1277,16 +1280,16 @@ path_id_path_links = {0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8),(8,9),(
 
 experiment_name = "random_placement"
 experiment_name="repeater_position"
-# experiment_name="equal"
+experiment_name="equal"
 L0_list = np.linspace(10,800,101)
-L0_list = [250]
-time_granularity_value = 1
+L0_list = [400]
+time_granularity_value = 5
 # results_file_path = "results/fixed_distance_random_repeater_placementv2.csv"
 results_file_path = "results/one_repeater_plaement_adjusting_exp_testing.csv"
-results_file_path = "results/one_repeater_plaement_all_metrics_timestep_1.csv"
-# results_file_path = "results/7_repeaters_equal_distance_no_cutoff.csv"
+results_file_path = "results/one_repeater_plaement_all_metrics_timestep_5.csv"
+results_file_path = "results/equal_repeater_placement_experiment.csv"
 for iteration in range(100):
-    for number_of_repeaters in [1]:    # for number_of_repeaters in [1]:
+    for number_of_repeaters in [5,8]:    # for number_of_repeaters in [1]:
         path_id_path_repeaters = each_R_path_repeaters[number_of_repeaters]
         path_id_path_links =each_R_path_links[number_of_repeaters] 
         each_path_source_destination = {0:[0,number_of_repeaters+1]}
@@ -1306,7 +1309,7 @@ for iteration in range(100):
                 import pdb
                 # pdb.set_trace()
                 for j, pos in enumerate(rep_loc):
-                    if pos>=0.5:
+                    if pos<=0.2 or 1==1:
                         if experiment_name =="repeater_position":
                             Le2e = L0_list[0]
                             L1 = pos*Le2e
@@ -1326,7 +1329,7 @@ for iteration in range(100):
                         
                         each_path_memory_min = {0:0}
                         each_path_memory_max= {0:memory_max}
-                        running_time = 100000000
+                        running_time = 200000000
                         scheme = "sequential"
                         for path_id in path_id_path_links:
                             if not having_cut_offs:
@@ -1379,7 +1382,7 @@ for iteration in range(100):
                             else:
                                 # for cut_off in [500, 1000, 2000, 4000, 6000, 8000, 10000, 20000, 30000, 40000, 60000,80000,100000,140000,200000]:
                                 # for cut_off in range(1,100,5):
-                                for cut_off in [50]:
+                                for cut_off in range(10,210,10):
                                     cut_off = cut_off*1000
                                     system = System(scheme,path_id,running_time,1,cut_off,each_link_length,
                                                     each_path_memory_min,each_path_memory_max)

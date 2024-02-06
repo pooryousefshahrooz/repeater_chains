@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[49]:
+# In[1]:
 
 
 import random
@@ -223,14 +223,7 @@ class System:
                     
 
 
-    def copy_left_instanse_to_right_instance(self,left_memory_object,right_memory_object):
-        right_memory_object.attempt_flag = left_memory_object.attempt_flag
-        right_memory_object.synchronous_flag = left_memory_object.synchronous_flag
-        right_memory_object.attempt_start_time = left_memory_object.attempt_start_time
-        right_memory_object.attempt_finishing_time = left_memory_object.attempt_finishing_time
-        right_memory_object.initial_fidelity = left_memory_object.initial_fidelity
-        right_memory_object.link_duration = left_memory_object.link_duration
-        right_memory_object.each_time_slot_duration = left_memory_object.each_time_slot_duration
+    
         
     def update(self,link,memory_id,current_clock_counter):
         expired_flag = False
@@ -521,7 +514,6 @@ class System:
 #             else:
 #                 print("left_memory_object.attempt_flag off for link %s no qubit has been expired with ages %s %s"%(link,left_memory_object.EPR_age,right_memory_object.EPR_age))
 
-        # self.copy_left_instanse_to_right_instance(left_memory_object,right_memory_object)
         
 #         if printing_qubit_aging_flag:
 #             print(" 0 time clock %s   link (%s,%s) last update (%s, %s) age track flag(%s,%s) got aged by one new age %s, %s "%(current_clock_counter,link[0],link[1],
@@ -577,7 +569,7 @@ class System:
         # link_duration = 2000
         right_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,repeater,"right",memory_id_right]
 
-        if current_clock_counter-right_memory_object.attempt_start_time-1 !=right_node_qubit_age:
+        if abs(current_clock_counter-right_memory_object.attempt_start_time-right_node_qubit_age)>2*self.time_granularity_value:
             print("it seems these two do not match right memory age %s and the reported age %s "%(current_clock_counter-right_memory_object.attempt_start_time ,right_node_qubit_age))
             import pdb
             pdb.set_trace()
@@ -629,8 +621,8 @@ class System:
             left_age=message.left_qubit_age
             right_age = message.right_qubit_age
             repeater = message.sender
-            # if global_swap_tracking_flag:
-                # print("swap results arrived from %s left memory elapsed time %s right memory elapsed time %s at time %s "%(repeater,left_age,right_age,clock_counter))
+            if global_swap_tracking_flag:
+                print("swap results arrived from %s left memory elapsed time %s right memory elapsed time %s at time %s "%(repeater,left_age,right_age,clock_counter))
                 # time.sleep(global_number_of_sleeping_sec_swap)                
             try:
                 self.each_path_each_repeater_swaped_memory_ages[self.path_id,repeater].append((left_age,right_age))
@@ -704,7 +696,7 @@ class System:
                     left_memory_object  = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,link[0],"right",memory_id]
                     right_memory_object  = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,link[1],"left",memory_id]
                     if left_memory_object.attempt_flag:
-                        print("we should not be attempting before receiving the swap results!")
+                        print("we should not be attempting on link %s,%s before receiving the swap results!"%(link[0],link[1]))
                         import pdb
                         pdb.set_trace()
                     left_memory_object.generated_flag = False
@@ -799,12 +791,12 @@ class System:
                                                     right_memory_object.memory_id,
                                                     current_clock_counter,True)
                                 if global_swap_tracking_flag:
-                                    print("we performed swap at repeater %s at time %s on ages left %s right %s and we ce of qubits to FALSE "%(repeater,
+                                    print("*************************************************** we performed swap at repeater %s at time %s on ages left %s right %s and we ce of qubits to FALSE "%(repeater,
                                                                                                                                                 current_clock_counter,
                                                                                                                                                 left_memory_object.EPR_age,
                                                                                                                                                right_memory_object.EPR_age
                                                                                                                                                ))
-                                    time.sleep(global_number_of_sleeping_sec_swap)
+                                    # time.sleep(global_number_of_sleeping_sec_swap)
                                     
                                 self.swap_operation_is_performed_flag = True
                                 left_memory_object.attempt_flag = False
@@ -914,6 +906,11 @@ class System:
             # except:
             #     self.each_path_each_repeater_swaped_memory_ages[self.path_id,repeater] = [(left_age,right_age)]
             self.message_channel.remove(message)
+
+        for repeater in self.path_id_path_repeaters[self.path_id][1:-1]:
+            self.swap_list[repeater]=[]
+
+                
         self.global_expiration_flag = False
         if global_printing_flag:
             print("***************************we maid all memories free *****************")
@@ -988,6 +985,10 @@ class System:
         f_e2e=1/2+1/2*(exp)
         if global_printing_flag:
             print("product %s sum T %s /t_coh %s exp %s fidelity %s "%(product,sum_of_time,t,exp,f_e2e))
+
+
+        # print("sender waiting time %s and receiver waiting time %s and e2e_fidelity %s "%(source_left_right_time[1],destination_left_right_time[0],e2e_fidelity))
+        # time.sleep(10)
         return f_e2e,e2e_fidelity
     
     
@@ -1264,16 +1265,16 @@ path_id_path_repeaters = {0:[0,1,2,3,4,5,6,7,8,9,10,11]}
 path_id_path_links = {0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8),(8,9)]}
 experiment_name = "random_placement"
 experiment_name="repeater_position"
-# experiment_name="equal"
+experiment_name="equal"
 L0_list = np.linspace(10,800,101)
-L0_list = [250]
-time_granularity_value = 1
+L0_list = [400]
+time_granularity_value = 5
 
 results_file_path = "results/fixed_distance_random_repeater_placement_parallel_scheme.csv"
-results_file_path = "results/one_repeater_plaement_all_metrics_timestep_1.csv"
-# results_file_path = "results/7_repeaters_equal_distance_no_cutoff.csv"
+results_file_path = "results/one_repeater_plaement_all_metrics_timestep_5.csv"
+results_file_path = "results/equal_repeater_placement_experiment.csv"
 for iteration in range(100):
-    for number_of_repeaters in [1]:
+    for number_of_repeaters in [5,8]:
     # for number_of_repeaters in [6]:
         path_id_path_repeaters = each_R_path_repeaters[number_of_repeaters]
         path_id_path_links =each_R_path_links[number_of_repeaters] 
@@ -1289,7 +1290,7 @@ for iteration in range(100):
                 import pdb
                 # pdb.set_trace()
                 for j, pos in enumerate(rep_loc):
-                    if pos>=0.4:
+                    if pos>=0.1 or 1==1:
                         # pos = 0.5
                         if experiment_name =="repeater_position":
                             Le2e = L0_list[0]
@@ -1312,7 +1313,7 @@ for iteration in range(100):
                         
                         each_path_memory_min = {0:0}
                         each_path_memory_max= {0:memory_max}
-                        running_time = 100000000
+                        running_time = 200000000
                         # print(pos,each_link_length[(0,1)],each_link_length[(1,2)])
                        
                         scheme = "parallel"
@@ -1391,7 +1392,7 @@ for iteration in range(100):
                                 # for cut_off in [1,2,3,4,5,10,20,40,80,100,200,500,1000,2000,4000]:#in milliseconds
                                 # for cut_off in range(1,100,5):#in milliseconds
                                 # for cut_off in [5,10,15,20,25,30,35,40,50,100,200,300,400,500,600,700,800,900,1000,2000,4000,6000,8000,12000,20000,40000,80000,100000,200000,400000,800000,900000,1000000]:#in milliseconds
-                                for cut_off in [50]:#in milliseconds
+                                for cut_off in range(10,210,10):#in milliseconds
                                     
                                     cut_off = cut_off*1000
                                     system = System(scheme,number_of_repeaters,path_id,running_time,1,cut_off,each_link_length,
