@@ -319,18 +319,18 @@ class System:
 #                                                                self.having_cut_offs , 
 #                 link[1] , self.each_path_source_destination[self.path_id]))
             if (EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and 
-                link[0] not in self.each_path_source_destination[self.path_id]) or (
+                link[0] not in self.each_path_source_destination[self.path_id] and left_node_memory_exist_flag) or (
                 right_EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and 
-                link[1] not in self.each_path_source_destination[self.path_id]):
+                link[1] not in self.each_path_source_destination[self.path_id] and right_node_memory_exist_flag):
                     expired_flag = True
                     self.expired_qubits_counter+=1
                     self.last_generated_expiration_message = current_clock_counter
                     if (EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and  
-                        link[0] not in self.each_path_source_destination[self.path_id]):
+                        link[0] not in self.each_path_source_destination[self.path_id] and left_node_memory_exist_flag):
                         left_memory_object.expired = True
                         distance_from_source,_ = self.shortest_path_to_end_nodes_length(link[0])
                     elif (right_EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and 
-                          link[1] not in self.each_path_source_destination[self.path_id]):
+                          link[1] not in self.each_path_source_destination[self.path_id] and right_node_memory_exist_flag):
                         right_memory_object.expired = True
                         distance_from_source,_ = self.shortest_path_to_end_nodes_length(link[1])
                     time_to_source = int(distance_from_source/2e5*1000000)
@@ -448,6 +448,73 @@ class System:
                     right_memory_object.EPR_age = -1
 #             else:
 #                 print("for link %s no qubit has been expired with ages %s %s"%(link,left_memory_object.EPR_age,right_memory_object.EPR_age))
+
+        elif not left_memory_object.attempt_flag and right_node_memory_exist_flag:#we may have attempted but done the swap and the qubit does not exist
+            if left_memory_object.memory_last_updated_clock<current_clock_counter or current_clock_counter==0:
+                if self.each_repeater_left_right_memory_age_tracking_flag[self.path_id,link[0],"right",memory_id]:
+                    left_memory_object.EPR_age = left_memory_object.EPR_age+self.time_granularity_value
+                    left_memory_object.memory_last_updated_clock  = current_clock_counter
+#                     print("21 we increased update time")
+            if right_memory_object.memory_last_updated_clock<current_clock_counter or current_clock_counter==0:
+                if self.each_repeater_left_right_memory_age_tracking_flag[self.path_id,link[1],"left",memory_id]:
+                    right_memory_object.EPR_age= right_memory_object.EPR_age+self.time_granularity_value
+                    right_memory_object.memory_last_updated_clock = current_clock_counter
+#                     print("22 we increased update time")
+#             else:
+#                 print("******************************at time %s flag for updating the age of qubits at link %s,%s is FALSE"%(current_clock_counter,link[0],link[1]))
+            EPR_age = left_memory_object.EPR_age
+            right_EPR_age = right_memory_object.EPR_age
+            if (EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and 
+                link[0] not in self.each_path_source_destination[self.path_id] and left_node_memory_exist_flag) or (
+                right_EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and 
+                link[1] not in self.each_path_source_destination[self.path_id] and right_node_memory_exist_flag):
+                self.expired_qubits_counter+=1
+                
+                
+                if printing_qubit_expiration_flag:
+                    print("1***************1!!!!!!!!!!!!!!!!!!!!!! unfortunately the qubit got aged at link %s %s  age %s right_EPR_age %s cut_off %s at time %s %s"%(left_memory_object.repeater_id,left_memory_object.entangled_node,left_memory_object.EPR_age, right_EPR_age,self.cut_off,current_clock_counter,"\n"))
+                    import pdb
+                    if global_go_to_sleep_flag:
+                        time.sleep(global_number_of_sleeping_sec_expiration)
+                    #pdb.set_trace()
+                # print("we expired becasue we are here")
+                # time.sleep(10)
+                expired_flag =True
+                self.last_generated_expiration_message = current_clock_counter
+                if (EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and  
+                        link[0] not in self.each_path_source_destination[self.path_id] and left_node_memory_exist_flag):
+                    left_memory_object.expired = True
+                    distance_from_source,_ = self.shortest_path_to_end_nodes_length(link[0])
+                elif (right_EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and 
+                      link[1] not in self.each_path_source_destination[self.path_id] and right_node_memory_exist_flag):
+                    right_memory_object.expired = True
+                    distance_from_source,_ = self.shortest_path_to_end_nodes_length(link[1])
+                time_to_source = int(distance_from_source/2e5*1000000)
+                if not self.global_expiration_flag:
+                    self.global_expiration_flag = True
+                    if printing_qubit_expiration_flag:
+                        print("we set the arriving time duration for expiration message to ",time_to_source)
+                    self.expiration_message_arriving_time = current_clock_counter+time_to_source
+            
+#                 self.send_a_message(link[0],self.path_id,"cancelling",left_memory_object.EPR_age,
+#                                                         right_memory_object.EPR_age,
+#                                                         link[0],
+#                                                         link[1],
+#                                                         left_memory_object.memory_id,
+#                                                         right_memory_object.memory_id,
+#                                                         current_clock_counter,False)
+                
+                left_memory_object.attempt_flag = False
+#                 print("****************3************* we are setting the attempt flag for link %s,%s to False"%(link[0],link[1]))
+
+                left_memory_object.EPR_age = -1
+                right_memory_object.EPR_age = -1
+                self.each_repeater_left_right_memory_exist_flag[self.path_id,link[0],"right",memory_id] = False
+                self.each_repeater_left_right_memory_exist_flag[self.path_id,link[1],"left",memory_id]  = False
+                self.each_repeater_left_right_memory_age_tracking_flag[self.path_id,link[0],"right",memory_id]  = False
+                self.each_repeater_left_right_memory_age_tracking_flag[self.path_id,link[1],"left",memory_id]  = False
+
+        
         else:
             if left_memory_object.memory_last_updated_clock<current_clock_counter or current_clock_counter==0:
                 if self.each_repeater_left_right_memory_age_tracking_flag[self.path_id,link[0],"right",memory_id]:
@@ -464,9 +531,9 @@ class System:
             EPR_age = left_memory_object.EPR_age
             right_EPR_age = right_memory_object.EPR_age
             if (EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and 
-                link[0] not in self.each_path_source_destination[self.path_id]) or (
+                link[0] not in self.each_path_source_destination[self.path_id] and left_node_memory_exist_flag) or (
                 right_EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and 
-                link[1] not in self.each_path_source_destination[self.path_id]):
+                link[1] not in self.each_path_source_destination[self.path_id] and right_node_memory_exist_flag):
                 self.expired_qubits_counter+=1
                 
                 
@@ -481,11 +548,11 @@ class System:
                 expired_flag =True
                 self.last_generated_expiration_message = current_clock_counter
                 if (EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and  
-                        link[0] not in self.each_path_source_destination[self.path_id]):
+                        link[0] not in self.each_path_source_destination[self.path_id] and left_node_memory_exist_flag):
                     left_memory_object.expired = True
                     distance_from_source,_ = self.shortest_path_to_end_nodes_length(link[0])
                 elif (right_EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and 
-                      link[1] not in self.each_path_source_destination[self.path_id]):
+                      link[1] not in self.each_path_source_destination[self.path_id] and right_node_memory_exist_flag):
                     right_memory_object.expired = True
                     distance_from_source,_ = self.shortest_path_to_end_nodes_length(link[1])
                 time_to_source = int(distance_from_source/2e5*1000000)
@@ -657,16 +724,7 @@ class System:
         if not missing_one_swap:
             if global_delivered_EPR_flag:
                 print("********************* we delivered one e2e EPR pair at time %s *********messages in channel %s***************"%(clock_counter,len(self.message_channel)))
-            self.one_successful_round_times.append(clock_counter - self.last_delivered_e2e_epr_time)
-            self.last_delivered_e2e_epr_time = clock_counter
-            self.last_failed_time = clock_counter
-            self.global_expiration_flag = False
-            import time
-            if global_go_to_sleep_flag:
-                time.sleep(global_number_of_sleeping_sec_delivered)
-            self.e2e_EPRs+=1
-            self.swap_operation_is_performed_flag = False
-            self.round_flag = True
+            
             each_repeater_left_right_memory_idle_time = {}
             for path_repeater,times in self.each_path_each_repeater_swaped_memory_ages.items():
                 key_path_id =path_repeater[0]
@@ -726,7 +784,21 @@ class System:
                     left_memory_object  = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,link[0],"right",memory_id]
                     left_memory_object.generated_flag = False
                     left_memory_object.expired = False
-        
+
+
+
+            self.one_successful_round_times.append(clock_counter - self.last_delivered_e2e_epr_time)
+            self.last_delivered_e2e_epr_time = clock_counter
+            self.last_failed_time = clock_counter
+            self.global_expiration_flag = False
+            self.make_all_memories_free()
+            import time
+            if global_go_to_sleep_flag:
+                time.sleep(global_number_of_sleeping_sec_delivered)
+            self.e2e_EPRs+=1
+            self.swap_operation_is_performed_flag = False
+            self.round_flag = True
+    
     def swap_operation(self,current_clock_counter,repeater):
         global global_printing_flag
         left_side_memory_ages = []
@@ -861,12 +933,18 @@ class System:
 
                 if link[0] == source:
                     if right_memory_object.expired:
+                        if global_printing_flag:
+                            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! the right qubit at link %s,%s is expired!!!!"%(link[0],link[1]))
                         return False
                 elif link[1] == end:
                     if left_memory_object.expired:
+                        if global_printing_flag:
+                            print("!!!!!!!!!!!!!!!!!!!!1!!!!!!!!!!!!!!!!! the left qubit at link %s,%s is expired!!!!"%(link[0],link[1]))
                         return False
                 else:
-                    if left_memory_object.expired:
+                    if left_memory_object.expired or right_memory_object.expired:
+                        if global_printing_flag:
+                            print("!!!!!!!!!!!!!!!!!!2!!!!!!!!!!!!!!!!!!! the left qubit at link %s,%s is expired!!!!"%(link[0],link[1]))
                         return False
         # if global_printing_flag:
         #     print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! none of the qubits is expired!!!!")
@@ -943,12 +1021,19 @@ class System:
             product = product*(2*self.F[self.path_id,repeater]-1)
         source = self.each_path_source_destination[self.path_id][0]
         destination = self.each_path_source_destination[self.path_id][1]
-        source_right_memory_object  = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,source,"right",0]
-        destination_left_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,destination,"left",0]
+        # source_right_memory_object  = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,source,"right",0]
+        # destination_left_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,destination,"left",0]
 
-        source_left_right_time = (0,source_right_memory_object.EPR_age)
-        destination_left_right_time = (destination_left_memory_object.EPR_age,0)
-        if global_printing_flag:
+        
+        source_node_memory_object  = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,source,"right",0]
+        destination_node_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,destination,"left",0]
+        
+    
+
+
+        
+        
+        if global_delivery_printing_flag:
             T= 0
             e2e = 0
             for link in self.path_id_path_links[self.path_id]:
@@ -958,24 +1043,25 @@ class System:
                 T = T+2*link_duration
             analytic_bob = e2e
             analytic_alice = T
-            print("end node source destination idle time %s %s analytic idle time %s %s "%(source_right_memory_object.EPR_age,
+            print("end node source destination idle time %s %s analytic idle time %s %s "%(source_node_memory_object.EPR_age,
                                                                                         analytic_alice,
-                                                                                       destination_left_memory_object.EPR_age,
+                                                                                       destination_node_memory_object.EPR_age,
                                                                                         analytic_bob
                                                                                            
                                                                                       ))
         try:
-            self.each_repeater_left_right_memories_waiting_times[self.path_id,source].append(source_left_right_time)
+            self.each_repeater_left_right_memories_waiting_times[self.path_id,source].append((0,source_node_memory_object.EPR_age))
         except:
-            self.each_repeater_left_right_memories_waiting_times[self.path_id,source] = [source_left_right_time]
+            self.each_repeater_left_right_memories_waiting_times[self.path_id,source] = [(0,source_node_memory_object.EPR_age)]
         try:
-            self.each_repeater_left_right_memories_waiting_times[self.path_id,destination].append(destination_left_right_time)
+            self.each_repeater_left_right_memories_waiting_times[self.path_id,destination].append((destination_node_memory_object.EPR_age,0))
         except:
-            self.each_repeater_left_right_memories_waiting_times[self.path_id,destination] = [destination_left_right_time]
+            self.each_repeater_left_right_memories_waiting_times[self.path_id,destination] = [(destination_node_memory_object.EPR_age,0)]
         if self.considering_end_nodes_idle_time:
-            sum_of_time = sum_of_time+source_left_right_time[1]+destination_left_right_time[0]
+            sum_of_time = sum_of_time+source_node_memory_object.EPR_age+destination_node_memory_object.EPR_age
 
-        sum_of_time_for_fidelity = sum_of_time+source_left_right_time[1]+destination_left_right_time[0]
+
+        sum_of_time_for_fidelity = sum_of_time+source_node_memory_object.EPR_age+destination_node_memory_object.EPR_age
         t_all = (sum_of_time_for_fidelity/self.t_coh)/1000000
         exp = np.exp(-t_all)
         e2e_fidelity=1/2+1/2*(exp)
@@ -1224,6 +1310,7 @@ printing_attempt_flag = False
 printing_attempt_success_flag = False
 printing_attempt_result_flag = False
 global_go_to_sleep_flag  =False
+global_delivery_printing_flag  = False
 global_number_of_sleeping_sec_attempt = 0.1
 global_number_of_sleeping_sec_attempt_full_fail = 0.1
 global_number_of_sleeping_sec_attempt_full_suc = 10
@@ -1264,17 +1351,17 @@ each_R_path_links = {    1:{0:[(0,1),(1,2)]},
 path_id_path_repeaters = {0:[0,1,2,3,4,5,6,7,8,9,10,11]}
 path_id_path_links = {0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8),(8,9)]}
 experiment_name = "random_placement"
-experiment_name="repeater_position"
-experiment_name="equal"
+# experiment_name="repeater_position"
+# experiment_name="equal"
 L0_list = np.linspace(10,800,101)
 L0_list = [400]
 time_granularity_value = 5
 
-results_file_path = "results/fixed_distance_random_repeater_placement_parallel_scheme.csv"
-results_file_path = "results/one_repeater_plaement_all_metrics_timestep_5.csv"
-results_file_path = "results/equal_repeater_placement_experiment.csv"
-for iteration in range(100):
-    for number_of_repeaters in [5,8]:
+results_file_path = "results/random_placement_exp_time_step_5.csv"
+# results_file_path = "results/one_repeater_plaement_testing_time_step_5.csv"
+# results_file_path = "results/equal_distance_repeater_placement_exp_time_step_5.csv"
+for iteration in range(600):
+    for number_of_repeaters in [5]:
     # for number_of_repeaters in [6]:
         path_id_path_repeaters = each_R_path_repeaters[number_of_repeaters]
         path_id_path_links =each_R_path_links[number_of_repeaters] 
@@ -1391,8 +1478,8 @@ for iteration in range(100):
             #                         for cut_off in [0.01,0.02,0.04,0.1,0.2,0.4,0.8,1,2,4,8,10,20,40,80,100,200,400]:#in milliseconds
                                 # for cut_off in [1,2,3,4,5,10,20,40,80,100,200,500,1000,2000,4000]:#in milliseconds
                                 # for cut_off in range(1,100,5):#in milliseconds
-                                # for cut_off in [5,10,15,20,25,30,35,40,50,100,200,300,400,500,600,700,800,900,1000,2000,4000,6000,8000,12000,20000,40000,80000,100000,200000,400000,800000,900000,1000000]:#in milliseconds
-                                for cut_off in range(10,210,10):#in milliseconds
+                                for cut_off in [50]:#in milliseconds
+                                # for cut_off in range(10,210,10):#in milliseconds
                                     
                                     cut_off = cut_off*1000
                                     system = System(scheme,number_of_repeaters,path_id,running_time,1,cut_off,each_link_length,
