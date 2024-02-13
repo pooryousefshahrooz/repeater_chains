@@ -1397,7 +1397,7 @@ results_file_path = "results/random_placement_exp_time_step_5.csv"
 # results_file_path = "results/one_repeater_placement_time_step_5.csv"
 # results_file_path = "results/equal_distance_repeater_placement_exp_time_step_5.csv"
 for iteration in range(100):
-    for number_of_repeaters in [5]:    # for number_of_repeaters in [1]:
+    for number_of_repeaters in [1,2,4,6,8]:    # for number_of_repeaters in [1]:
         path_id_path_repeaters = each_R_path_repeaters[number_of_repeaters]
         path_id_path_links =each_R_path_links[number_of_repeaters] 
         each_path_source_destination = {0:[0,number_of_repeaters+1]}
@@ -1488,7 +1488,7 @@ for iteration in range(100):
                                                             Ns,avg_success_T,Nf,avg_fail_T])
                             else:
                                 # for cut_off in [500, 1000, 2000, 4000, 6000, 8000, 10000, 20000, 30000, 40000, 60000,80000,100000,140000,200000]:
-                                for cut_off in [50]:
+                                for cut_off in [50,100]:
                                 # for cut_off in range(10,210,10):
                                     cut_off = cut_off*1000
                                     system = System(scheme,path_id,running_time,1,cut_off,each_link_length,
