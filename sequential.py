@@ -70,7 +70,7 @@ class Message:
         
         
 class System:
-    def __init__(self,mode,path_id,end_time,q_value,cut_off,each_link_length,each_path_memory_min,each_path_memory_max):
+    def __init__(self,coherecne_time,mode,path_id,end_time,q_value,cut_off,each_link_length,each_path_memory_min,each_path_memory_max):
         self.mode = mode
         self.considering_end_nodes_idle_time = considering_end_nodes_idle_time
         self.path_id = path_id
@@ -113,7 +113,7 @@ class System:
         self.each_path_all_delivered_pairs_fidelity = {}
         self.each_path_all_delivered_pairs_fidelity_including_end_nodes = {}
         self.each_path_each_repeater_swaped_memory_ages ={}
-        self.t_coh = 0.1
+        self.t_coh = coherecne_time
         self.F = {}
         self.each_repeater_left_right_memories_waiting_times = {}
         self.each_repeater_left_right_memory_age_tracking_flag = {}
@@ -1386,18 +1386,18 @@ path_id_path_links = {0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8),(8,9),(
 
 
 
-experiment_name = "random_placement"
-# experiment_name="repeater_position"
+# experiment_name = "random_placement"
+experiment_name="repeater_position"
 # experiment_name="equal"
 L0_list = np.linspace(10,800,101)
-L0_list = [400]
-time_granularity_value = 5
+L0_list = [100]
+time_granularity_value = 1
 # results_file_path = "results/fixed_distance_random_repeater_placementv2.csv"
 results_file_path = "results/random_placement_exp_time_step_5.csv"
 # results_file_path = "results/one_repeater_placement_time_step_5.csv"
-# results_file_path = "results/equal_distance_repeater_placement_exp_time_step_5.csv"
-for iteration in range(100):
-    for number_of_repeaters in [1,2,4,6,8]:    # for number_of_repeaters in [1]:
+results_file_path = "results/equal_distance_repeater_placement_coherence_cutoff_testing_time_step_one.csv"
+for iteration in range(1000):
+    for number_of_repeaters in [1]:    # for number_of_repeaters in [1]:
         path_id_path_repeaters = each_R_path_repeaters[number_of_repeaters]
         path_id_path_links =each_R_path_links[number_of_repeaters] 
         each_path_source_destination = {0:[0,number_of_repeaters+1]}
@@ -1417,6 +1417,7 @@ for iteration in range(100):
                 
                 for j, pos in enumerate(rep_loc):
                     if pos<=0.2 or 1==1:
+                        pos = 0.5
                         if experiment_name =="repeater_position":
                             Le2e = L0_list[0]
                             L1 = pos*Le2e
@@ -1436,7 +1437,7 @@ for iteration in range(100):
                         
                         each_path_memory_min = {0:0}
                         each_path_memory_max= {0:memory_max}
-                        running_time = 200000000
+                        running_time = 50000000
                         scheme = "sequential"
                         for path_id in path_id_path_links:
                             if not having_cut_offs:
@@ -1487,70 +1488,76 @@ for iteration in range(100):
                                              number_of_successful,experiment_name,iteration,i,j,having_cut_offs,e2e_fidelity,
                                                             Ns,avg_success_T,Nf,avg_fail_T])
                             else:
-                                # for cut_off in [500, 1000, 2000, 4000, 6000, 8000, 10000, 20000, 30000, 40000, 60000,80000,100000,140000,200000]:
-                                for cut_off in [50,100]:
-                                # for cut_off in range(10,210,10):
-                                    cut_off = cut_off*1000
-                                    system = System(scheme,path_id,running_time,1,cut_off,each_link_length,
-                                                    each_path_memory_min,each_path_memory_max)
-                                    system.main()
-                                    e2e_rate = system.e2e_EPRs/running_time*1000000
-                                    if e2e_rate>0:
-                                        S,r,avg_e2e_f,e_x,e_z,e2e_fidelity= system.sekret_key(path_id,number_of_repeaters,e2e_rate)
-                                    else:
-                                        S,r,avg_e2e_f,e_x,e_z,e2e_fidelity = 0,0,0,0,0,0
-                                    try:
-                                        rate_of_generating_first_segment = mean(system.successfull_first_segment_geenration_times)
-                                        number_of_successful = len(system.successfull_first_segment_geenration_times)
-                                    except:
-                                        rate_of_generating_first_segment = 0
-                                        number_of_successful = 0
-                                    if len(system.all_delivery_durations)!=0:
-                                        avg_T = sum(system.all_delivery_durations)/len(system.all_delivery_durations)
-                                    else:
-                                        avg_T = -1
-                                    print("scheme %s L %s cut_off %s M %s time %s delivered %s e2e EPRs and e2e_rate %s SKR %s avg_e2e_f %s"%(scheme,
-                                                                                                                                            L0,
-                                                                                                                                            cut_off,
-                                                                                                                                            memory_max,
-                                                                                                                                            running_time,
-                                                                                                                                            system.e2e_EPRs,
-                                                                                                                                            e2e_rate,S,
-                                                                                                                                            avg_e2e_f))
-                                    if system.one_successful_round_times:
-                                        avg_success_T = sum(system.one_successful_round_times)/len(system.one_successful_round_times)
-                                    else:
-                                        avg_success_T = -1
-                                    Ns = len(system.one_successful_round_times)
-                                    Nf=len(system.one_failed_round_times)
-                                    if system.one_failed_round_times:
-                                        avg_fail_T = sum(system.one_failed_round_times)/len(system.one_failed_round_times)
-                                    else:
-                                        avg_fail_T = -1
-
-                                    
-                                    line_items = [scheme,experimenting_classical_communication,
-                                                                having_cut_offs,
-                                                                number_of_repeaters,
-                                                                cut_off,memory_max,running_time,
-                                                                e2e_rate,system.longest_link_duration,
-                                                               entanglement_generation_delay,path_id,
-                                                               S,r,avg_e2e_f,L0,avg_T,e_x,e_z,
-                                                 system.expired_qubits_counter,
-                                             rate_of_generating_first_segment,
-                                                 number_of_successful,experiment_name,iteration,i , j,having_cut_offs,e2e_fidelity]
-                                    line_items.append(Ns)
-                                    line_items.append(avg_success_T)
-                                    line_items.append(Nf)
-                                    line_items.append(avg_fail_T)
-                                    # print("we done with L %s "%(L0))
-                                    # time.sleep(20)
-                                    with open(results_file_path, 'a') as newFile:                                
-                                        newFileWriter = csv.writer(newFile)
-                                        newFileWriter.writerow([item for item in line_items])
-                                    print("we appended!")
-                                    # time.sleep(100)
-                                    # pdb.set_trace()
+                                
+                                τ_coh_list = np.logspace(-4.3,-2,30)
+                                τ_coh_list = np.logspace(0.1,0.1,1)
+                                coherence_indx = -1
+                                for coherecne_time in τ_coh_list:# in seconds
+                                    # for cut_off in [500, 1000, 2000, 4000, 6000, 8000, 10000, 20000, 30000, 40000, 60000,80000,100000,140000,200000]:
+                                    for cut_off in [0.01,0.1,0.2,0.3,0.5,1.0,2,4,6,8,10]:
+                                    # for cut_off in range(10,210,10):
+                                        cut_off = cut_off*1000
+                                        system = System(scheme,coherecne_time,path_id,running_time,1,cut_off,each_link_length,
+                                                        each_path_memory_min,each_path_memory_max)
+                                        system.main()
+                                        e2e_rate = system.e2e_EPRs/running_time*1000000
+                                        if e2e_rate>0:
+                                            S,r,avg_e2e_f,e_x,e_z,e2e_fidelity= system.sekret_key(path_id,number_of_repeaters,e2e_rate)
+                                        else:
+                                            S,r,avg_e2e_f,e_x,e_z,e2e_fidelity = 0,0,0,0,0,0
+                                        try:
+                                            rate_of_generating_first_segment = mean(system.successfull_first_segment_geenration_times)
+                                            number_of_successful = len(system.successfull_first_segment_geenration_times)
+                                        except:
+                                            rate_of_generating_first_segment = 0
+                                            number_of_successful = 0
+                                        if len(system.all_delivery_durations)!=0:
+                                            avg_T = sum(system.all_delivery_durations)/len(system.all_delivery_durations)
+                                        else:
+                                            avg_T = -1
+                                        print("scheme %s L %s cut_off %s M %s time %s delivered %s e2e EPRs and e2e_rate %s SKR %s avg_e2e_f %s"%(scheme,
+                                                                                                                                                L0,
+                                                                                                                                                cut_off,
+                                                                                                                                                memory_max,
+                                                                                                                                                running_time,
+                                                                                                                                                system.e2e_EPRs,
+                                                                                                                                                e2e_rate,S,
+                                                                                                                                                avg_e2e_f))
+                                        if system.one_successful_round_times:
+                                            avg_success_T = sum(system.one_successful_round_times)/len(system.one_successful_round_times)
+                                        else:
+                                            avg_success_T = -1
+                                        Ns = len(system.one_successful_round_times)
+                                        Nf=len(system.one_failed_round_times)
+                                        if system.one_failed_round_times:
+                                            avg_fail_T = sum(system.one_failed_round_times)/len(system.one_failed_round_times)
+                                        else:
+                                            avg_fail_T = -1
+    
+                                        
+                                        line_items = [scheme,experimenting_classical_communication,
+                                                                    having_cut_offs,
+                                                                    number_of_repeaters,
+                                                                    cut_off,memory_max,running_time,
+                                                                    e2e_rate,system.longest_link_duration,
+                                                                   entanglement_generation_delay,path_id,
+                                                                   S,r,avg_e2e_f,L0,avg_T,e_x,e_z,
+                                                     system.expired_qubits_counter,
+                                                 rate_of_generating_first_segment,
+                                                     number_of_successful,experiment_name,iteration,i , j,having_cut_offs,
+                                                      e2e_fidelity,coherecne_time]
+                                        line_items.append(Ns)
+                                        line_items.append(avg_success_T)
+                                        line_items.append(Nf)
+                                        line_items.append(avg_fail_T)
+                                        # print("we done with L %s "%(L0))
+                                        # time.sleep(20)
+                                        with open(results_file_path, 'a') as newFile:                                
+                                            newFileWriter = csv.writer(newFile)
+                                            newFileWriter.writerow([item for item in line_items])
+                                        print("we appended!")
+                                        # time.sleep(100)
+                                        # pdb.set_trace()
                 
 
 

@@ -8,6 +8,7 @@ import random
 import time
 import csv
 import networkx as nx
+import sys
 import numpy as np
 import math
 from statistics import mean
@@ -793,8 +794,9 @@ class System:
             self.global_expiration_flag = False
             self.make_all_memories_free()
             import time
-            if global_go_to_sleep_flag:
-                time.sleep(global_number_of_sleeping_sec_delivered)
+            if global_delivered_EPR_flag:
+                if global_go_to_sleep_flag:
+                    time.sleep(global_number_of_sleeping_sec_delivered)
             self.e2e_EPRs+=1
             self.swap_operation_is_performed_flag = False
             self.round_flag = True
@@ -1114,8 +1116,9 @@ class System:
                     # if max(self.last_generated_expiration_message+self.e2e_communication_duration,self.last_be_geenrated_time+self.e2e_communication_duration) <= clock_counter:
                     # if self.last_generated_expiration_message+self.e2e_communication_duration <= clock_counter:
                     if self.expiration_message_arriving_time<=clock_counter:
-                        # print("lets free all memories and start a new round")
+                        
                         if global_go_to_sleep_flag:
+                            print("lets free all memories and start a new round")
                             time.sleep(2)
                         for link in self.path_id_path_links[self.path_id]:
                             for memory_id in range(self.each_path_memory_min[self.path_id],self.each_path_memory_max[self.path_id]):
@@ -1350,20 +1353,22 @@ each_R_path_links = {    1:{0:[(0,1),(1,2)]},
                         }
 path_id_path_repeaters = {0:[0,1,2,3,4,5,6,7,8,9,10,11]}
 path_id_path_links = {0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8),(8,9)]}
-experiment_name = "random_placement"
-# experiment_name="repeater_position"
-experiment_name="equal"
-L0_list = np.linspace(100,400,101)
-# L0_list = [200]
-time_granularity_value = 5
-
+# experiment_name = "random_placement"
+experiment_name="repeater_position"
+# experiment_name="equal"
+L0_list = np.linspace(300,400,10)
+L0_list = [100]
+time_granularity_value = 1
+passed_indx  =int(sys.argv[1])
 # results_file_path = "results/random_placement_exp_time_step_5.csv"
 # results_file_path = "results/one_repeater_plaement_testing_time_step_5.csv"
-results_file_path = "results/equal_distance_repeater_placement_as_distance.csv"
+# results_file_path = "results/equal_distance_repeater_placement_as_distance.csv"
 # results_file_path = "results/equal_distance_repeater_placement_cutoff_coherence_exp_time_step_5v2.csv"
-results_file_path = "results/equal_distance_repeater_placement_coherence_distance_color_map_exp_time_step_5.csv"
-for iteration in range(400):
-    for number_of_repeaters in [7]:
+results_file_path = "results/equal_distance_repeater_placement_coherence_cutoff_distance_color_map_exp_time_step_10.csv"
+results_file_path = "results/equal_distance_repeater_placement_coherence_cutoff_testing_time_step_one.csv"
+
+for iteration in range(1000000):
+    for number_of_repeaters in [1]:
     # for number_of_repeaters in [6]:
         path_id_path_repeaters = each_R_path_repeaters[number_of_repeaters]
         path_id_path_links =each_R_path_links[number_of_repeaters] 
@@ -1380,7 +1385,7 @@ for iteration in range(400):
                 # pdb.set_trace()
                 for j, pos in enumerate(rep_loc):
                     if pos>=0.1 or 1==1:
-                        # pos = 0.5
+                        pos = 0.5
                         if experiment_name =="repeater_position":
                             Le2e = L0_list[0]
                             L1 = pos*Le2e
@@ -1402,7 +1407,7 @@ for iteration in range(400):
                         
                         each_path_memory_min = {0:0}
                         each_path_memory_max= {0:memory_max}
-                        running_time = 100000000
+                        running_time = 30000000
                         # print(pos,each_link_length[(0,1)],each_link_length[(1,2)])
                        
                         scheme = "parallel"
@@ -1484,104 +1489,120 @@ for iteration in range(400):
                                 # for cut_off in [1,2,3,4,5,10,20,40,80,100,200,500,1000,2000,4000]:#in milliseconds
                                 # for cut_off in range(1,100,5):#in milliseconds
                                 # for coherecne_time in range(0.1,100,10):
-                                for coherecne_time in [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1,2,3,4,5,6,7,8,9,10]:
-                                    # for cut_off in range(10,500,5):
-                                    for cut_off in [50]:
-                                    # for cut_off in range(10,210,10):#in milliseconds
-                                        
-                                        cut_off = cut_off*1000
-                                        system = System(scheme,coherecne_time/1000,number_of_repeaters,path_id,running_time,1,cut_off,each_link_length,
-                                                        each_path_memory_min,each_path_memory_max)
-                                        system.main()
-                                        e2e_rate = system.e2e_EPRs/running_time*1000000
-                                        if e2e_rate>0:
-                                            S,r,avg_e2e_f,e_x,e_z,e2e_f_including_end_nodes= system.sekret_key(path_id,number_of_repeaters,e2e_rate)
-                                        else:
-                                            S,r,avg_e2e_f,e_x,e_z,e2e_f_including_end_nodes = 0,0,0,0,0,0     
-                                        try:
-                                            rate_of_generating_first_segment = mean(system.successfull_first_segment_geenration_times)
-                                            number_of_successful = len(system.successfull_first_segment_geenration_times)
-                                        except:
-                                            rate_of_generating_first_segment = 0
-                                            number_of_successful = 0
-                                        if len(system.all_delivery_durations)!=0:
-                                            avg_T = sum(system.all_delivery_durations)/len(system.all_delivery_durations)
-                                        else:
-                                            avg_T = 0
-                                        line_items = [scheme,experimenting_classical_communication,
-                                                                    having_cut_offs,
-                                                                    number_of_repeaters,
-                                                                    cut_off,memory_max,running_time,
-                                                                    e2e_rate,system.longest_link_duration,
-                                                                   entanglement_generation_delay,path_id,
-                                                                   S,r,avg_e2e_f,L0,avg_T,e_x,e_z,
-                                                     system.expired_qubits_counter,
-                                                 rate_of_generating_first_segment,
-                                                     number_of_successful,experiment_name,iteration,i,j,having_cut_offs,
-                                                     e2e_f_including_end_nodes,coherecne_time]
-                
-                                        for repeater in  system.path_id_path_repeaters[system.path_id]:
+                                τ_coh_list = np.logspace(-4.3,-2,30)
+                                τ_coh_list = np.logspace(0.1,0.1,1)
+                                coherence_indx = -1
+                                for coherecne_time in τ_coh_list:# in seconds
+                                    coherence_indx+=1
+                                    if coherence_indx==passed_indx:
+                                    # for coherecne_time in [0.1]:# in seconds
+                                        coherecne_time = coherecne_time*1000
+                                        # for cut_off in range(10,500,5):
+                                        # for cut_off in [0.05]:
+                                        c = 2e5 # speed of light in fiber [km/s]
+                                        τ_cut_list = np.logspace(-0.5,2,20)*each_link_length[(0,1)]/c/2 # cutoff [sec]
+                                        # for cut_off in τ_cut_list:#in seconds
+                                        for cut_off in [0.01,0.1,0.2,0.3,0.5,1.0,2,4,6,8,10]:
+                                            
+                                            cut_off = cut_off*1000
+                                            cut_off = cut_off*1000
+                                            starting_time = time.time()
+                                            system = System(scheme,coherecne_time/1000,number_of_repeaters,path_id,running_time,1,cut_off,each_link_length,
+                                                            each_path_memory_min,each_path_memory_max)
+                                            system.main()
+                                            e2e_rate = system.e2e_EPRs/running_time*1000000
                                             if e2e_rate>0:
-                                                waiting_times = system.each_repeater_left_right_memories_waiting_times[system.path_id,repeater]
-                                                left_q_idle_times = []
-                                                right_q_idle_times = []
-                                                for w_time in waiting_times:
-                                                    # with open("results/parallel_each_instance_each_repeater_left_right_time_withcutoff_values.csv", 'a') as newFile:                                
-                                                    #     newFileWriter = csv.writer(newFile)
-                                                    #     newFileWriter.writerow([number_of_repeaters,L0,repeater,
-                                                    #                             w_time[0],w_time[1],cut_off])
-                
-                                                    left_q_idle_times.append(w_time[0])
-                                                    right_q_idle_times.append(w_time[1])
-                                                if right_q_idle_times:
-                                                    avg_left_idle_time = mean(left_q_idle_times)
-                                                    avg_right_idle_time = mean(right_q_idle_times)
-                                                    avg_left_idle_time = avg_left_idle_time/1000000
-                                                    avg_right_idle_time = avg_right_idle_time/1000000
-                                                    print("repeater %s avg_left_idle_time %s avg_right_idle_time %s max left  %s min left %s "%(repeater,avg_left_idle_time,
-                                                                                                                                    avg_right_idle_time,max(left_q_idle_times),
-                                                                                                                                   min(left_q_idle_times)))
-                                                    
+                                                S,r,avg_e2e_f,e_x,e_z,e2e_f_including_end_nodes= system.sekret_key(path_id,number_of_repeaters,e2e_rate)
                                             else:
-                                                avg_left_idle_time = -1
-                                                avg_right_idle_time = -1
-                                            line_items.append(str(avg_left_idle_time)+":"+str(avg_right_idle_time))
-                                        print("scheme %s L %s cut_off %s R %s time %s delivered %s e2e EPRs and e2e_rate %s SKR %s avg_e2e_f %s avg_T %s ms expired #s %s"%(scheme,L0,
-                                                                                                                                                    cut_off,number_of_repeaters,
-                                                                                                                                                    running_time,system.e2e_EPRs,
-                                                                                                                                                    e2e_rate,S,avg_e2e_f,
-                                                                                                                                              avg_T/1000,
-                                                                                                                                              system.expired_qubits_counter))
-                                        if system.one_successful_round_times:
-                                            avg_success_T = sum(system.one_successful_round_times)/len(system.one_successful_round_times)
-                                        else:
-                                            avg_success_T = -1
-                                        Ns = len(system.one_successful_round_times)
-                                        Nf=len(system.one_failed_round_times)
-                                        if system.one_failed_round_times:
-                                            avg_fail_T = sum(system.one_failed_round_times)/len(system.one_failed_round_times)
-                                        else:
-                                            avg_fail_T = -1
-                                        line_items.append(Ns)
-                                        line_items.append(avg_success_T)
-                                        line_items.append(Nf)
-                                        line_items.append(avg_fail_T)
-                                    
-                                        import pdb
-                                        #pdb.set_trace()
-                                        # if global_go_to_sleep_flag:
-                                        #     time.sleep(30)
-                                        with open(results_file_path, 'a') as newFile:                                
-                                            newFileWriter = csv.writer(newFile)
-                                            newFileWriter.writerow([item for item in line_items])
+                                                S,r,avg_e2e_f,e_x,e_z,e2e_f_including_end_nodes = 0,0,0,0,0,0     
+                                            try:
+                                                rate_of_generating_first_segment = mean(system.successfull_first_segment_geenration_times)
+                                                number_of_successful = len(system.successfull_first_segment_geenration_times)
+                                            except:
+                                                rate_of_generating_first_segment = 0
+                                                number_of_successful = 0
+                                            if len(system.all_delivery_durations)!=0:
+                                                avg_T = sum(system.all_delivery_durations)/len(system.all_delivery_durations)
+                                            else:
+                                                avg_T = 0
+                                            line_items = [scheme,experimenting_classical_communication,
+                                                                        having_cut_offs,
+                                                                        number_of_repeaters,
+                                                                        cut_off,memory_max,running_time,
+                                                                        e2e_rate,system.longest_link_duration,
+                                                                       entanglement_generation_delay,path_id,
+                                                                       S,r,avg_e2e_f,L0,avg_T,e_x,e_z,
+                                                         system.expired_qubits_counter,
+                                                     rate_of_generating_first_segment,
+                                                         number_of_successful,experiment_name,iteration,i,j,having_cut_offs,
+                                                         e2e_f_including_end_nodes,coherecne_time]
+                    
+                                            for repeater in  system.path_id_path_repeaters[system.path_id]:
+                                                if e2e_rate>0:
+                                                    waiting_times = system.each_repeater_left_right_memories_waiting_times[system.path_id,repeater]
+                                                    left_q_idle_times = []
+                                                    right_q_idle_times = []
+                                                    for w_time in waiting_times:
+                                                        # with open("results/parallel_each_instance_each_repeater_left_right_time_withcutoff_values.csv", 'a') as newFile:                                
+                                                        #     newFileWriter = csv.writer(newFile)
+                                                        #     newFileWriter.writerow([number_of_repeaters,L0,repeater,
+                                                        #                             w_time[0],w_time[1],cut_off])
+                    
+                                                        left_q_idle_times.append(w_time[0])
+                                                        right_q_idle_times.append(w_time[1])
+                                                    if right_q_idle_times:
+                                                        avg_left_idle_time = mean(left_q_idle_times)
+                                                        avg_right_idle_time = mean(right_q_idle_times)
+                                                        avg_left_idle_time = avg_left_idle_time/1000000
+                                                        avg_right_idle_time = avg_right_idle_time/1000000
+                                                        print("repeater %s avg_left_idle_time %s avg_right_idle_time %s max left  %s min left %s "%(repeater,avg_left_idle_time,
+                                                                                                                                        avg_right_idle_time,max(left_q_idle_times),
+                                                                                                                                       min(left_q_idle_times)))
+                                                        
+                                                else:
+                                                    avg_left_idle_time = -1
+                                                    avg_right_idle_time = -1
+                                                line_items.append(str(avg_left_idle_time)+":"+str(avg_right_idle_time))
+                                            print("scheme %s L %s cut_off %s R %s time %s delivered %s e2e EPRs and e2e_rate %s SKR %s avg_e2e_f %s avg_T %s ms expired #s %s"%(scheme,L0,
+                                                                                                                                                        cut_off,number_of_repeaters,
+                                                                                                                                                        running_time,system.e2e_EPRs,
+                                                                                                                                                        e2e_rate,S,avg_e2e_f,
+                                                                                                                                                  avg_T/1000,
+                                                                                                                                                  system.expired_qubits_counter))
+                                            current_time = time.time()
+                                            processing_time_in_seconds = int(current_time -starting_time)
+                                            print("it took %s seconds for this round"%(processing_time_in_seconds))
+                                            time.sleep(1)
+                                            if system.one_successful_round_times:
+                                                avg_success_T = sum(system.one_successful_round_times)/len(system.one_successful_round_times)
+                                            else:
+                                                avg_success_T = -1
+                                            Ns = len(system.one_successful_round_times)
+                                            Nf=len(system.one_failed_round_times)
+                                            if system.one_failed_round_times:
+                                                avg_fail_T = sum(system.one_failed_round_times)/len(system.one_failed_round_times)
+                                            else:
+                                                avg_fail_T = -1
+                                            line_items.append(Ns)
+                                            line_items.append(avg_success_T)
+                                            line_items.append(Nf)
+                                            line_items.append(avg_fail_T)
+                                        
+                                            import pdb
+                                            #pdb.set_trace()
+                                            # if global_go_to_sleep_flag:
+                                            #     time.sleep(30)
+                                            with open(results_file_path, 'a') as newFile:                                
+                                                newFileWriter = csv.writer(newFile)
+                                                newFileWriter.writerow([item for item in line_items])
+                    
+                                            # if e2e_rate>0:
+                                            #     for each_e2e_f in system.each_path_all_delivered_pairs_fidelity[system.path_id]:
+                                            #         with open("results/parallel_each_instance_e2e_with_cutoff_values.csv", 'a') as newFile:                                
+                                            #             newFileWriter = csv.writer(newFile)
+                                            #             newFileWriter.writerow([number_of_repeaters,L0,each_e2e_f,cut_off])
                 
-                                        # if e2e_rate>0:
-                                        #     for each_e2e_f in system.each_path_all_delivered_pairs_fidelity[system.path_id]:
-                                        #         with open("results/parallel_each_instance_e2e_with_cutoff_values.csv", 'a') as newFile:                                
-                                        #             newFileWriter = csv.writer(newFile)
-                                        #             newFileWriter.writerow([number_of_repeaters,L0,each_e2e_f,cut_off])
-                
-            
+                                        
 
 
 # In[4]:
