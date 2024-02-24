@@ -319,18 +319,18 @@ class System:
 #             print("time %s we are comparing right age %s cut-off %s flag %s link_1 %s source_des %s"%(current_clock_counter,right_EPR_age ,self.each_link_cut_off[link] ,
 #                                                                self.having_cut_offs , 
 #                 link[1] , self.each_path_source_destination[self.path_id]))
-            if (EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and 
+            if (EPR_age >self.each_link_cut_off[link] and self.having_cut_offs and 
                 link[0] not in self.each_path_source_destination[self.path_id] and left_node_memory_exist_flag) or (
-                right_EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and 
+                right_EPR_age >self.each_link_cut_off[link] and self.having_cut_offs and 
                 link[1] not in self.each_path_source_destination[self.path_id] and right_node_memory_exist_flag):
                     expired_flag = True
                     self.expired_qubits_counter+=1
                     self.last_generated_expiration_message = current_clock_counter
-                    if (EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and  
+                    if (EPR_age >self.each_link_cut_off[link] and self.having_cut_offs and  
                         link[0] not in self.each_path_source_destination[self.path_id] and left_node_memory_exist_flag):
                         left_memory_object.expired = True
                         distance_from_source,_ = self.shortest_path_to_end_nodes_length(link[0])
-                    elif (right_EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and 
+                    elif (right_EPR_age >self.each_link_cut_off[link] and self.having_cut_offs and 
                           link[1] not in self.each_path_source_destination[self.path_id] and right_node_memory_exist_flag):
                         right_memory_object.expired = True
                         distance_from_source,_ = self.shortest_path_to_end_nodes_length(link[1])
@@ -465,9 +465,9 @@ class System:
 #                 print("******************************at time %s flag for updating the age of qubits at link %s,%s is FALSE"%(current_clock_counter,link[0],link[1]))
             EPR_age = left_memory_object.EPR_age
             right_EPR_age = right_memory_object.EPR_age
-            if (EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and 
+            if (EPR_age >self.each_link_cut_off[link] and self.having_cut_offs and 
                 link[0] not in self.each_path_source_destination[self.path_id] and left_node_memory_exist_flag) or (
-                right_EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and 
+                right_EPR_age >self.each_link_cut_off[link] and self.having_cut_offs and 
                 link[1] not in self.each_path_source_destination[self.path_id] and right_node_memory_exist_flag):
                 self.expired_qubits_counter+=1
                 
@@ -482,11 +482,11 @@ class System:
                 # time.sleep(10)
                 expired_flag =True
                 self.last_generated_expiration_message = current_clock_counter
-                if (EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and  
+                if (EPR_age >self.each_link_cut_off[link] and self.having_cut_offs and  
                         link[0] not in self.each_path_source_destination[self.path_id] and left_node_memory_exist_flag):
                     left_memory_object.expired = True
                     distance_from_source,_ = self.shortest_path_to_end_nodes_length(link[0])
-                elif (right_EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and 
+                elif (right_EPR_age >self.each_link_cut_off[link] and self.having_cut_offs and 
                       link[1] not in self.each_path_source_destination[self.path_id] and right_node_memory_exist_flag):
                     right_memory_object.expired = True
                     distance_from_source,_ = self.shortest_path_to_end_nodes_length(link[1])
@@ -531,9 +531,9 @@ class System:
 #                 print("******************************at time %s flag for updating the age of qubits at link %s,%s is FALSE"%(current_clock_counter,link[0],link[1]))
             EPR_age = left_memory_object.EPR_age
             right_EPR_age = right_memory_object.EPR_age
-            if (EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and 
+            if (EPR_age >self.each_link_cut_off[link] and self.having_cut_offs and 
                 link[0] not in self.each_path_source_destination[self.path_id] and left_node_memory_exist_flag) or (
-                right_EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and 
+                right_EPR_age >self.each_link_cut_off[link] and self.having_cut_offs and 
                 link[1] not in self.each_path_source_destination[self.path_id] and right_node_memory_exist_flag):
                 self.expired_qubits_counter+=1
                 
@@ -548,11 +548,11 @@ class System:
                 # time.sleep(10)
                 expired_flag =True
                 self.last_generated_expiration_message = current_clock_counter
-                if (EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and  
+                if (EPR_age >self.each_link_cut_off[link] and self.having_cut_offs and  
                         link[0] not in self.each_path_source_destination[self.path_id] and left_node_memory_exist_flag):
                     left_memory_object.expired = True
                     distance_from_source,_ = self.shortest_path_to_end_nodes_length(link[0])
-                elif (right_EPR_age >=self.each_link_cut_off[link] and self.having_cut_offs and 
+                elif (right_EPR_age >self.each_link_cut_off[link] and self.having_cut_offs and 
                       link[1] not in self.each_path_source_destination[self.path_id] and right_node_memory_exist_flag):
                     right_memory_object.expired = True
                     distance_from_source,_ = self.shortest_path_to_end_nodes_length(link[1])
@@ -693,9 +693,13 @@ class System:
                 print("swap results arrived from %s left memory elapsed time %s right memory elapsed time %s at time %s "%(repeater,left_age,right_age,clock_counter))
                 # time.sleep(global_number_of_sleeping_sec_swap)                
             try:
-                self.each_path_each_repeater_swaped_memory_ages[self.path_id,repeater].append((left_age,right_age))
+                self.each_path_each_repeater_swaped_memory_ages[self.path_id][repeater]=[(left_age,right_age)]
             except:
-                self.each_path_each_repeater_swaped_memory_ages[self.path_id,repeater] = [(left_age,right_age)]
+                try:
+                    self.each_path_each_repeater_swaped_memory_ages[self.path_id][repeater] = [(left_age,right_age)]
+                except:
+                    self.each_path_each_repeater_swaped_memory_ages[self.path_id]={}
+                    self.each_path_each_repeater_swaped_memory_ages[self.path_id][repeater] = [(left_age,right_age)]
             self.message_channel.remove(message)
         if self.each_path_swap_on_source_node_qubit_arrived[self.path_id]:
             missing_one_swap = False
@@ -727,18 +731,12 @@ class System:
                 print("********************* we delivered one e2e EPR pair at time %s *********messages in channel %s***************"%(clock_counter,len(self.message_channel)))
             
             each_repeater_left_right_memory_idle_time = {}
-            for path_repeater,times in self.each_path_each_repeater_swaped_memory_ages.items():
-                key_path_id =path_repeater[0]
-                repeater = path_repeater[1]
-                if self.path_id==key_path_id:
-                    time = times[0]
-                    each_repeater_left_right_memory_idle_time[repeater] = time
-            for repeater in self.path_id_path_repeaters[self.path_id][1:-1]:
-                self.each_repeater_swap_flag[repeater] = False# we set the flag to False for next round
-                if len(self.each_path_each_repeater_swaped_memory_ages[self.path_id,repeater])==1:
-                    self.each_path_each_repeater_swaped_memory_ages[self.path_id,repeater] = []
-                else:
-                    self.each_path_each_repeater_swaped_memory_ages[self.path_id,repeater] = self.each_path_each_repeater_swaped_memory_ages[self.path_id,repeater][1:]
+            for path,repeater_times in self.each_path_each_repeater_swaped_memory_ages.items():
+                for repeater,w_time in repeater_times.items():
+                    new_waiting_time = w_time
+                    each_repeater_left_right_memory_idle_time[repeater] = new_waiting_time
+
+            self.each_path_each_repeater_swaped_memory_ages ={}
             f_e2e,e2e_fidelity=self.compute_f_e2e(each_repeater_left_right_memory_idle_time)
             try:
                 self.each_path_all_delivered_pairs_fidelity[self.path_id].append(f_e2e)
@@ -789,6 +787,7 @@ class System:
 
 
             self.one_successful_round_times.append(clock_counter - self.last_delivered_e2e_epr_time)
+            
             self.last_delivered_e2e_epr_time = clock_counter
             self.last_failed_time = clock_counter
             self.global_expiration_flag = False
@@ -800,6 +799,9 @@ class System:
             self.e2e_EPRs+=1
             self.swap_operation_is_performed_flag = False
             self.round_flag = True
+            return True
+        else:
+            return False
     
     def swap_operation(self,current_clock_counter,repeater):
         global global_printing_flag
@@ -1002,30 +1004,18 @@ class System:
         else:
             return -e_x*np.log2(e_x)-(1-e_x)*np.log2(1-e_x)
     def compute_f_e2e(self,each_repeater_left_right_memory_idle_time):
-        if global_printing_flag:
-            print("each_repeater_left_right_memory_idle_time ",each_repeater_left_right_memory_idle_time)
-        product = 1
         sum_of_time = 0
         for repeater,left_right_time in each_repeater_left_right_memory_idle_time.items():
             if global_printing_flag:
-                tau = 2*self.longest_link_duration
-                if printing_qubit_aging_flag:
-                    print("swap on repeater %s happened on qubits with age %s and %s 2_tau is %s have %s Rs "%(repeater,
+                if global_delivery_printing_flag:
+                    print("swap on repeater %s happened on qubits with age %s and %s have %s Rs "%(repeater,
                                                                                                 left_right_time[0],
                                                                                                 left_right_time[1],
-                                                                                                tau,
                                                                                                 len(list(each_repeater_left_right_memory_idle_time.keys()))))
-            sum_of_time = sum_of_time+left_right_time[0]+left_right_time[1]#(4,10)
-            try:
-                self.each_repeater_left_right_memories_waiting_times[self.path_id,repeater].append(left_right_time)
-            except:
-                self.each_repeater_left_right_memories_waiting_times[self.path_id,repeater] = [left_right_time]
-            product = product*(2*self.F[self.path_id,repeater]-1)
+            sum_of_time = sum_of_time+left_right_time[0][0]/1000000+left_right_time[0][1]/1000000#(4,10)
+           
         source = self.each_path_source_destination[self.path_id][0]
         destination = self.each_path_source_destination[self.path_id][1]
-        # source_right_memory_object  = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,source,"right",0]
-        # destination_left_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,destination,"left",0]
-
         
         source_node_memory_object  = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,source,"right",0]
         destination_node_memory_object = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,destination,"left",0]
@@ -1036,48 +1026,27 @@ class System:
         
         
         if global_delivery_printing_flag:
-            T= 0
-            e2e = 0
-            for link in self.path_id_path_links[self.path_id]:
-                length = self.each_link_length[link]
-                link_duration = int(length/2e5*1000000)
-                e2e = e2e+link_duration
-                T = T+2*link_duration
-            analytic_bob = e2e
-            analytic_alice = T
-            print("end node source destination idle time %s %s analytic idle time %s %s "%(source_node_memory_object.EPR_age,
-                                                                                        analytic_alice,
+            print("end node source destination idle time %s destination idle time %s "%(source_node_memory_object.EPR_age,
+                                                                                        
                                                                                        destination_node_memory_object.EPR_age,
-                                                                                        analytic_bob
+                                                                                        
                                                                                            
                                                                                       ))
-        try:
-            self.each_repeater_left_right_memories_waiting_times[self.path_id,source].append((0,source_node_memory_object.EPR_age))
-        except:
-            self.each_repeater_left_right_memories_waiting_times[self.path_id,source] = [(0,source_node_memory_object.EPR_age)]
-        try:
-            self.each_repeater_left_right_memories_waiting_times[self.path_id,destination].append((destination_node_memory_object.EPR_age,0))
-        except:
-            self.each_repeater_left_right_memories_waiting_times[self.path_id,destination] = [(destination_node_memory_object.EPR_age,0)]
-        if self.considering_end_nodes_idle_time:
-            sum_of_time = sum_of_time+source_node_memory_object.EPR_age+destination_node_memory_object.EPR_age
-
-
-        sum_of_time_for_fidelity = sum_of_time+source_node_memory_object.EPR_age+destination_node_memory_object.EPR_age
-        t_all = (sum_of_time_for_fidelity/self.t_coh)/1000000
-        exp = np.exp(-t_all)
-        e2e_fidelity=1/2+1/2*(exp)
         
-        t = (sum_of_time/self.t_coh)/1000000
+
+
+        sum_of_time_for_fidelity = sum_of_time+source_node_memory_object.EPR_age/1000000+destination_node_memory_object.EPR_age/1000000
+        # print("our self.t_coh %s our sum_of_time_for_fidelity %s "%(self.t_coh,sum_of_time_for_fidelity))
+        t_all = sum_of_time_for_fidelity/self.t_coh
+        e2e_fidelity=1/2+1/2*(np.exp(-t_all))
+        
+        t = (sum_of_time)/self.t_coh
         exp = np.exp(-t)
         f_e2e=1/2+1/2*(exp)
-        if global_printing_flag:
-            print("product %s sum T %s /t_coh %s exp %s fidelity %s "%(product,sum_of_time,t,exp,f_e2e))
-
-
-        # print("sender waiting time %s and receiver waiting time %s and e2e_fidelity %s "%(source_left_right_time[1],destination_left_right_time[0],e2e_fidelity))
-        # time.sleep(10)
+        f_e2e=1/2+1/2*(np.exp(-t))
         return f_e2e,e2e_fidelity
+        
+      
     
     
     def sekret_key(self,path_id,n,rate):
@@ -1087,21 +1056,44 @@ class System:
         
         mu_e2e=(self.mu**n)*np.prod(self.mu_i[self.path_id])
         
-        e_x =(1+mu_e2e)/2-(mu_e2e*avg_e2e_f)
-        e_z=(1-mu_e2e)/2
+        e_z =(1+mu_e2e)/2-(mu_e2e*avg_e2e_f)
+        e_x=(1-mu_e2e)/2
         r= 1-self.h(e_x)-self.h(e_z)
         S = rate*r
-        return S,r,avg_e2e_f,e_x,e_z,avg_e2e_f_including_end_nodes
+
+        # def h(p_list):
+        #     y_list = np.zeros(len(p_list))
+        #     for i,p in enumerate(p_list):
+        #         if p<1e-6 or (1-p)<1e-6:
+        #             y_list[i]= 0
+        #         else:
+        #             y_list[i]= -p*np.log2(p)-(1-p)*np.log2(1-p)
+        #     return y_list
+        # N_links = 4
+        # mu_link = 1
+        # F_link = 1
+        # mu_e2e = mu_link**(2*N_links-1)
+        # # secret key rate calculations
+        # ex = (1 - mu_e2e)/2
+        # ez = (1 + mu_e2e)/2 - mu_e2e * avg_e2e_f
+        # S = rate * (1-h([ex])-h([ez]))
+
+        
+        return S,r,mu_e2e,avg_e2e_f,e_x,e_z,avg_e2e_f_including_end_nodes
     def main(self):
         self.e2e_EPRs = 0
-        for clock_counter in range(0,self.end_time,self.time_granularity_value):
+        clock_counter = 1
+        while(clock_counter <=self.end_time):
             if clock_counter%5000==0:
-                print("mode %s cut_off %s link %s R %s clock %s End %s "%(self.mode,self.cut_off,self.each_link_length[(0,1)],self.R,clock_counter,self.end_time))
+                print("mode %s cut_off %s link %s R %s clock %s End %s "%(self.mode,self.cut_off,
+                                                                          self.each_link_length[(0,1)],
+                                                                          self.R,clock_counter,self.end_time),end="\r")
 #             if not self.round_flag: 
 #                 """this means one round of the paralel scheme has not finished. 
 #                 We wait until we receive the swap results from all repeaters"""
 #             self.check_swap_results_arrived(clock_counter)
 #             self.check_all_swaps(clock_counter)
+            
             for path_id,path_links in self.path_id_path_links.items():
                 for link in path_links:
                     for memory_id in range(self.each_path_memory_min[path_id],self.each_path_memory_max[self.path_id]):
@@ -1111,7 +1103,8 @@ class System:
                         for repeater in self.path_id_path_repeaters[self.path_id][1:-1]:
                             self.swap_operation(clock_counter,repeater)  
                 self.check_swap_results_arrived(clock_counter)
-                self.check_all_swaps(clock_counter)
+                if self.check_all_swaps(clock_counter):
+                    clock_counter-=1
                 if not self.none_expired():
                     # if max(self.last_generated_expiration_message+self.e2e_communication_duration,self.last_be_geenrated_time+self.e2e_communication_duration) <= clock_counter:
                     # if self.last_generated_expiration_message+self.e2e_communication_duration <= clock_counter:
@@ -1139,6 +1132,8 @@ class System:
                         self.last_failed_time = clock_counter
                         self.last_delivered_e2e_epr_time = clock_counter
                         self.last_generated_expiration_message = clock_counter
+                        clock_counter-=1
+            clock_counter+=self.time_granularity_value
 
 
 
@@ -1146,79 +1141,6 @@ class System:
 
 
                 
-                # if self.all_are_generated():
-                #     if self.none_expired():
-                #         if printing_qubit_expiration_flag:
-                #             print("*** all generated and all exist and we are performing swap at time %s "%(clock_counter))
-                #         for repeater in self.path_id_path_repeaters[self.path_id][1:-1]:
-                #             self.swap_operation(clock_counter,repeater)
-                #         self.check_swap_results_arrived(clock_counter)
-                #         self.check_all_swaps(clock_counter)
-                #     else:
-                #         if printing_qubit_expiration_flag:
-                #             print("one of the qubits have been expired :((((((((((((((")
-                #             if global_go_to_sleep_flag:
-                #                 time.sleep(.15)
-                #         # self.check_swap_results_arrived(clock_counter)
-                #         # self.check_all_swaps(clock_counter)
-                #         # if self.check_swap_operation_is_performed_on_all():
-                #         #     # if printing_qubit_expiration_flag:
-                #         #     #     print("we have performed swaps. so let wait for swap results")
-                #         #     self.check_swap_results_arrived(clock_counter)
-                #         #     self.check_all_swaps(clock_counter)
-                #         # else:
-                #         if printing_qubit_expiration_flag:
-                #             print("we had expired qubits before doing swaps and so we wait until some time passes",clock_counter)
-                #             if global_go_to_sleep_flag:
-                #                 time.sleep(0.1)
-                #         # if max(self.last_generated_expiration_message+self.e2e_communication_duration,self.last_be_geenrated_time+self.e2e_communication_duration) <= clock_counter:
-                #         # if self.last_generated_expiration_message+self.e2e_communication_duration <= clock_counter:
-                #         if self.expiration_message_arriving_time<=clock_counter:
-                #             #print("lets free all memories and start a new round")
-                #             if global_go_to_sleep_flag:
-                #                 time.sleep(2)
-                #             for link in self.path_id_path_links[self.path_id]:
-                #                 for memory_id in range(self.each_path_memory_min[self.path_id],self.each_path_memory_max[self.path_id]):
-                #                     left_memory_object  = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,link[0],"right",memory_id]
-                #                     left_memory_object.generated_flag = False
-                #                     left_memory_object.expired = False
-                #                     self.each_path_swap_on_source_node_qubit_arrived[self.path_id]=False
-                #                     self.each_path_swap_on_source_node_qubit_id[self.path_id] = -1
-                #                     self.each_path_swap_on_end_node_qubit_id[self.path_id] = -1
-                #                     self.make_all_memories_free()
-                #                     self.all_generated_flag = False
-                #                     self.swap_operation_is_performed_flag = False
-                #                     self.last_generated_expiration_message = clock_counter
-                # else:
-                #     if not self.none_expired():
-                #         if global_printing_flag:
-                #             print("we are going to make all memories free")
-                #         # if self.last_generated_expiration_message+self.e2e_communication_duration <= clock_counter:
-                #         # if max(self.last_generated_expiration_message+self.e2e_communication_duration,self.last_be_geenrated_time+self.e2e_communication_duration) <= clock_counter:
-                #         if self.expiration_message_arriving_time<=clock_counter:
-                #             for link in self.path_id_path_links[self.path_id]:
-                #                 for memory_id in range(self.each_path_memory_min[self.path_id],self.each_path_memory_max[self.path_id]):
-                #                     left_memory_object  = self.each_path_repeater_left_right_memory_id_memory_object[self.path_id,link[0],"right",memory_id]
-                #                     left_memory_object.generated_flag = False
-                #                     left_memory_object.expired = False
-                #                     self.each_path_swap_on_source_node_qubit_arrived[self.path_id]=False
-                #                     self.each_path_swap_on_source_node_qubit_id[self.path_id] = -1
-                #                     self.each_path_swap_on_end_node_qubit_id[self.path_id] = -1
-                #                     self.make_all_memories_free()
-                #                     self.all_generated_flag = False
-                #                     self.swap_operation_is_performed_flag = False
-                                    
-                #                     self.one_failed_round_times.append(clock_counter-self.last_failed_time)
-                #                     self.last_failed_time = clock_counter
-                #                     self.last_delivered_e2e_epr_time = clock_counter
-                #                     self.last_generated_expiration_message = clock_counter
-                #                     if global_go_to_sleep_flag:
-                #                         time.sleep(1)
-                                        
-                #                 # if global_printing_flag:
-                #                 #     print("time is %s and we have to wait until all qubits are generated"%(clock_counter))
-            
-           
 
 
 # In[ ]:
@@ -1354,21 +1276,22 @@ each_R_path_links = {    1:{0:[(0,1),(1,2)]},
 path_id_path_repeaters = {0:[0,1,2,3,4,5,6,7,8,9,10,11]}
 path_id_path_links = {0:[(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,8),(8,9)]}
 # experiment_name = "random_placement"
-experiment_name="repeater_position"
-# experiment_name="equal"
+# experiment_name="repeater_position"
+experiment_name="equal"
 L0_list = np.linspace(300,400,10)
-L0_list = [100]
-time_granularity_value = 1
+L0_list = [200]
+time_granularity_value = 5
 passed_indx  =int(sys.argv[1])
 # results_file_path = "results/random_placement_exp_time_step_5.csv"
 # results_file_path = "results/one_repeater_plaement_testing_time_step_5.csv"
 # results_file_path = "results/equal_distance_repeater_placement_as_distance.csv"
 # results_file_path = "results/equal_distance_repeater_placement_cutoff_coherence_exp_time_step_5v2.csv"
 results_file_path = "results/equal_distance_repeater_placement_coherence_cutoff_distance_color_map_exp_time_step_10.csv"
-results_file_path = "results/equal_distance_repeater_placement_coherence_cutoff_testing_time_step_one.csv"
-
+results_file_path = "results/equal_distance_repeater_placement_coherence_cutoff_testing_time_step_oneLe2e50km.csv"
+results_file_path = "results/equal_distance_repeater_placement_coherence_cutoff_testing_time_step_oneLe2e100kmv5.csv"
+results_file_path = "results/equal_distance_repeater_placement_cutoff_Le2e200km_time_step_5_testingv7.csv"
 for iteration in range(1000000):
-    for number_of_repeaters in [1]:
+    for number_of_repeaters in [3]:
     # for number_of_repeaters in [6]:
         path_id_path_repeaters = each_R_path_repeaters[number_of_repeaters]
         path_id_path_links =each_R_path_links[number_of_repeaters] 
@@ -1385,7 +1308,7 @@ for iteration in range(1000000):
                 # pdb.set_trace()
                 for j, pos in enumerate(rep_loc):
                     if pos>=0.1 or 1==1:
-                        pos = 0.5
+                        # pos = 0.5
                         if experiment_name =="repeater_position":
                             Le2e = L0_list[0]
                             L1 = pos*Le2e
@@ -1407,7 +1330,7 @@ for iteration in range(1000000):
                         
                         each_path_memory_min = {0:0}
                         each_path_memory_max= {0:memory_max}
-                        running_time = 30000000
+                        running_time = 50000000
                         # print(pos,each_link_length[(0,1)],each_link_length[(1,2)])
                        
                         scheme = "parallel"
@@ -1425,9 +1348,9 @@ for iteration in range(1000000):
                                         rate_of_generating_first_segment= 0
                                         number_of_successful = 0
                                     if e2e_rate>0:
-                                        S,r,avg_e2e_f,e_x,e_z,e2e_f_including_end_nodes= system.sekret_key(path_id,number_of_repeaters,e2e_rate)
+                                        S,r,mu_e2e,avg_e2e_f,e_x,e_z,e2e_f_including_end_nodes= system.sekret_key(path_id,number_of_repeaters,e2e_rate)
                                     else:
-                                        S,r,avg_e2e_f,e_x,e_z,e2e_f_including_end_nodes = 0,0,0,0,0,0
+                                        S,r,mu_e2e,avg_e2e_f,e_x,e_z,e2e_f_including_end_nodes = 0,0,0,0,0,0,0
                                         
                                     if len(system.all_delivery_durations)!=0:
                                         avg_T = sum(system.all_delivery_durations)/len(system.all_delivery_durations)
@@ -1444,30 +1367,30 @@ for iteration in range(1000000):
                                                  rate_of_generating_first_segment,
                                                      number_of_successful,experiment_name,iteration,i,j,
                                                   having_cut_offs,e2e_f_including_end_nodes,
-                                                 coherecne_time]
+                                                 coherecne_time,mu_e2e]
         
         
                                     
                                     
-                                    for repeater in  system.path_id_path_repeaters[system.path_id]:
-                                        if e2e_rate>0:
-                                            waiting_times = system.each_repeater_left_right_memories_waiting_times[system.path_id,repeater]
-                                            left_q_idle_times = []
-                                            right_q_idle_times = []
-                                            for time in waiting_times:
-                                                with open("results/parallel_each_instance_each_repeater_left_right_timev12.csv", 'a') as newFile:                                
-                                                    newFileWriter = csv.writer(newFile)
-                                                    newFileWriter.writerow([number_of_repeaters,L0,repeater,time[0],time[1]])
+                                    # for repeater in  system.path_id_path_repeaters[system.path_id]:
+                                    #     if e2e_rate>0:
+                                    #         waiting_times = system.each_repeater_left_right_memories_waiting_times[system.path_id,repeater]
+                                    #         left_q_idle_times = []
+                                    #         right_q_idle_times = []
+                                    #         for time in waiting_times:
+                                    #             with open("results/parallel_each_instance_each_repeater_left_right_timev12.csv", 'a') as newFile:                                
+                                    #                 newFileWriter = csv.writer(newFile)
+                                    #                 newFileWriter.writerow([number_of_repeaters,L0,repeater,time[0],time[1]])
                 
-                                                left_q_idle_times.append(time[0])
-                                                right_q_idle_times.append(time[1])
-                                            if right_q_idle_times:
-                                                avg_left_idle_time = mean(left_q_idle_times)
-                                                avg_right_idle_time = mean(right_q_idle_times)
-                                        else:
-                                            avg_left_idle_time = -1
-                                            avg_right_idle_time = -1
-                                        line_items.append(str(avg_left_idle_time)+":"+str(avg_right_idle_time))
+                                    #             left_q_idle_times.append(time[0])
+                                    #             right_q_idle_times.append(time[1])
+                                    #         if right_q_idle_times:
+                                    #             avg_left_idle_time = mean(left_q_idle_times)
+                                    #             avg_right_idle_time = mean(right_q_idle_times)
+                                    #     else:
+                                    #         avg_left_idle_time = -1
+                                    #         avg_right_idle_time = -1
+                                    #     line_items.append(str(avg_left_idle_time)+":"+str(avg_right_idle_time))
                                     print("scheme %s L %s cut_off %s R %s time %s delivered %s e2e EPRs and e2e_rate %s SKR %s avg_e2e_f %s avg_T %s"%(scheme,L0,
                                                                                                                                                 "no_cut_off",number_of_repeaters,
                                                                                                                                                 running_time,system.e2e_EPRs,
@@ -1490,7 +1413,7 @@ for iteration in range(1000000):
                                 # for cut_off in range(1,100,5):#in milliseconds
                                 # for coherecne_time in range(0.1,100,10):
                                 τ_coh_list = np.logspace(-4.3,-2,30)
-                                τ_coh_list = np.logspace(0.1,0.1,1)
+                                τ_coh_list =[0.01]
                                 coherence_indx = -1
                                 for coherecne_time in τ_coh_list:# in seconds
                                     coherence_indx+=1
@@ -1500,9 +1423,12 @@ for iteration in range(1000000):
                                         # for cut_off in range(10,500,5):
                                         # for cut_off in [0.05]:
                                         c = 2e5 # speed of light in fiber [km/s]
-                                        τ_cut_list = np.logspace(-0.5,2,20)*each_link_length[(0,1)]/c/2 # cutoff [sec]
+                                        # τ_cut_list = np.logspace(-0.5,2,20)*each_link_length[(0,1)]/c/2 # cutoff [sec]
+                                        Le2e = 200
+                                        τ_cut_list = np.logspace(0,4,41)*Le2e/(2*c) # cutoff [sec]
                                         # for cut_off in τ_cut_list:#in seconds
-                                        for cut_off in [0.01,0.1,0.2,0.3,0.5,1.0,2,4,6,8,10]:
+                                        for cut_off in [0.0019905358527674867,0.02,0.03,0.04,0.05,0.06294627058970838, 0.07924465962305571, 0.09976311574844403]:
+                                        # for cut_off in τ_cut_list:
                                             
                                             cut_off = cut_off*1000
                                             cut_off = cut_off*1000
@@ -1512,9 +1438,9 @@ for iteration in range(1000000):
                                             system.main()
                                             e2e_rate = system.e2e_EPRs/running_time*1000000
                                             if e2e_rate>0:
-                                                S,r,avg_e2e_f,e_x,e_z,e2e_f_including_end_nodes= system.sekret_key(path_id,number_of_repeaters,e2e_rate)
+                                                S,r,mu_e2e,avg_e2e_f,e_x,e_z,e2e_f_including_end_nodes= system.sekret_key(path_id,number_of_repeaters,e2e_rate)
                                             else:
-                                                S,r,avg_e2e_f,e_x,e_z,e2e_f_including_end_nodes = 0,0,0,0,0,0     
+                                                S,r,mu_e2e,avg_e2e_f,e_x,e_z,e2e_f_including_end_nodes = 0,0,0,0,0,0,0     
                                             try:
                                                 rate_of_generating_first_segment = mean(system.successfull_first_segment_geenration_times)
                                                 number_of_successful = len(system.successfull_first_segment_geenration_times)
@@ -1535,34 +1461,34 @@ for iteration in range(1000000):
                                                          system.expired_qubits_counter,
                                                      rate_of_generating_first_segment,
                                                          number_of_successful,experiment_name,iteration,i,j,having_cut_offs,
-                                                         e2e_f_including_end_nodes,coherecne_time]
+                                                         e2e_f_including_end_nodes,coherecne_time,mu_e2e]
                     
-                                            for repeater in  system.path_id_path_repeaters[system.path_id]:
-                                                if e2e_rate>0:
-                                                    waiting_times = system.each_repeater_left_right_memories_waiting_times[system.path_id,repeater]
-                                                    left_q_idle_times = []
-                                                    right_q_idle_times = []
-                                                    for w_time in waiting_times:
-                                                        # with open("results/parallel_each_instance_each_repeater_left_right_time_withcutoff_values.csv", 'a') as newFile:                                
-                                                        #     newFileWriter = csv.writer(newFile)
-                                                        #     newFileWriter.writerow([number_of_repeaters,L0,repeater,
-                                                        #                             w_time[0],w_time[1],cut_off])
+                                            # for repeater in  system.path_id_path_repeaters[system.path_id]:
+                                                # if e2e_rate>0:
+                                                #     waiting_times = system.each_repeater_left_right_memories_waiting_times[system.path_id,repeater]
+                                                #     left_q_idle_times = []
+                                                #     right_q_idle_times = []
+                                                #     for w_time in waiting_times:
+                                                #         # with open("results/parallel_each_instance_each_repeater_left_right_time_withcutoff_values.csv", 'a') as newFile:                                
+                                                #         #     newFileWriter = csv.writer(newFile)
+                                                #         #     newFileWriter.writerow([number_of_repeaters,L0,repeater,
+                                                #         #                             w_time[0],w_time[1],cut_off])
                     
-                                                        left_q_idle_times.append(w_time[0])
-                                                        right_q_idle_times.append(w_time[1])
-                                                    if right_q_idle_times:
-                                                        avg_left_idle_time = mean(left_q_idle_times)
-                                                        avg_right_idle_time = mean(right_q_idle_times)
-                                                        avg_left_idle_time = avg_left_idle_time/1000000
-                                                        avg_right_idle_time = avg_right_idle_time/1000000
-                                                        print("repeater %s avg_left_idle_time %s avg_right_idle_time %s max left  %s min left %s "%(repeater,avg_left_idle_time,
-                                                                                                                                        avg_right_idle_time,max(left_q_idle_times),
-                                                                                                                                       min(left_q_idle_times)))
+                                                #         left_q_idle_times.append(w_time[0])
+                                                #         right_q_idle_times.append(w_time[1])
+                                                #     if right_q_idle_times:
+                                                #         avg_left_idle_time = mean(left_q_idle_times)
+                                                #         avg_right_idle_time = mean(right_q_idle_times)
+                                                #         avg_left_idle_time = avg_left_idle_time/1000000
+                                                #         avg_right_idle_time = avg_right_idle_time/1000000
+                                                #         print("repeater %s avg_left_idle_time %s avg_right_idle_time %s max left  %s min left %s "%(repeater,avg_left_idle_time,
+                                                #                                                                                         avg_right_idle_time,max(left_q_idle_times),
+                                                #                                                                                        min(left_q_idle_times)))
                                                         
-                                                else:
-                                                    avg_left_idle_time = -1
-                                                    avg_right_idle_time = -1
-                                                line_items.append(str(avg_left_idle_time)+":"+str(avg_right_idle_time))
+                                                # else:
+                                                #     avg_left_idle_time = -1
+                                                #     avg_right_idle_time = -1
+                                                # line_items.append(str(avg_left_idle_time)+":"+str(avg_right_idle_time))
                                             print("scheme %s L %s cut_off %s R %s time %s delivered %s e2e EPRs and e2e_rate %s SKR %s avg_e2e_f %s avg_T %s ms expired #s %s"%(scheme,L0,
                                                                                                                                                         cut_off,number_of_repeaters,
                                                                                                                                                         running_time,system.e2e_EPRs,
