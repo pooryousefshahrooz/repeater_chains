@@ -46,19 +46,20 @@ def T_parallel_no_cutoff(τ_coh, mu_link, F_link, links, cct= True, Nmax=10000):
     τs = links/c
     Ns = np.zeros((N_links,Nmax))
     # Ns[0,:] = (2*F_geo(np.random.rand(Nmax),p_link*Trans(links[0]))-1)*τs[0]
-    p_i = p_link*Trans(links[0])
-    Ns[0,:] = (2*F_geo(np.random.uniform(low=p_i, high=1, size=(Nmax,)),p_i)-1)*τs[0]
-    for i in range(1,N_links):
-        # Ns[i,:] = 2*F_geo(np.random.rand(Nmax),p_link*Trans(links[i]))*τs[i]
-        p_i = p_link*Trans(links[i])
-        Ns[i,:] = 2*F_geo(np.random.uniform(low=p_i, high=1, size=(Nmax,)),p_i)*τs[i]
-
-    Ts = np.zeros((N_links-1,Nmax))
-    Ts[0,:] = np.abs(Ns[1,:]-Ns[0,:])+ 2*τs[1]
-    for i in range(1,N_links-1):
-        Ts[i,:] = np.abs(Ns[i+1,:]-Ns[i,:]+τs[i])+ 2*τs[i+1]
-    f_memory_qkd = np.mean(np.exp(-np.sum(Ts,axis=0)/τ_coh))
     if cct: # inclduing classical comm. 
+        p_i = p_link*Trans(links[0])
+        Ns[0,:] = (2*F_geo(np.random.uniform(low=p_i, high=1, size=(Nmax,)),p_i)-1)*τs[0]
+        for i in range(1,N_links):
+            # Ns[i,:] = 2*F_geo(np.random.rand(Nmax),p_link*Trans(links[i]))*τs[i]
+            p_i = p_link*Trans(links[i])
+            Ns[i,:] = 2*F_geo(np.random.uniform(low=p_i, high=1, size=(Nmax,)),p_i)*τs[i]
+
+        Ts = np.zeros((N_links-1,Nmax))
+        Ts[0,:] = np.abs(Ns[1,:]-Ns[0,:])+ 2*τs[1]
+        for i in range(1,N_links-1):
+            Ts[i,:] = np.abs(Ns[i+1,:]-Ns[i,:]+τs[i])+ 2*τs[i+1]
+        f_memory_qkd = np.mean(np.exp(-np.sum(Ts,axis=0)/τ_coh))
+        #
         Tsw = np.zeros((N_links-1,Nmax))
         Tsw[0,:] = np.max([Ns[1,:],Ns[0,:]],axis=0) + np.sum(τs[:1])
         for i in range(1,N_links-1):
@@ -69,9 +70,17 @@ def T_parallel_no_cutoff(τ_coh, mu_link, F_link, links, cct= True, Nmax=10000):
         Ts_B = np.max(Tsw,axis=0)-Ns[-1,:] + τs[-1] 
         f_memory_bell = np.mean(np.exp(-(np.sum(Ts,axis=0)+Ts_A+Ts_B)/τ_coh))
     else:
+        for i in range(N_links):
+            p_i = p_link*Trans(links[i])
+            Ns[i,:] = F_geo(np.random.uniform(low=p_i, high=1, size=(Nmax,)),p_i)*τs[i]
+        Ts = np.zeros((N_links-1,Nmax))
+        for i in range(N_links-1):
+            Ts[i,:] = np.abs(Ns[i+1,:]-Ns[i,:])+ τs[i+1]
+        f_memory_qkd = np.mean(np.exp(-np.sum(Ts,axis=0)/τ_coh))
+
         T_tot = np.mean(np.max(Ns,axis=0))
         Ts_A = np.max(Ns,axis=0)-Ns[0,:] + τs[0] 
-        Ts_B = np.max(Ns,axis=0)-Ns[-1,:] + τs[-1] 
+        Ts_B = np.max(Ns,axis=0)-Ns[-1,:]
         f_memory_bell = np.mean(np.exp(-(np.sum(Ts,axis=0)+Ts_A+Ts_B)/τ_coh))
 
     raw_rate = 1/T_tot
@@ -87,7 +96,7 @@ def T_parallel_no_cutoff(τ_coh, mu_link, F_link, links, cct= True, Nmax=10000):
     return raw_rate, skr, F_e2e
 
 
-def T_sequential_no_cutoff(τ_coh, mu_link, F_link,links):
+def T_sequential_no_cutoff(τ_coh, mu_link, F_link,links, cct=True):
     """ Calculate performance metrics for asynchronous sequential scheme using analytical formulas
     inputs:
         τ_coh: coherence time of quantum memories
@@ -95,6 +104,7 @@ def T_sequential_no_cutoff(τ_coh, mu_link, F_link,links):
         entanglement swapping error
         F_link: fidelity of link level entanglement (i.e.,quality of locally generated Bell pairs)
         links: list of segment (link) lengths in km
+        cct: bool flag to turn on/off classical comm.
     outputs:
         Raw_rate: 1/ expected value of total time for e2e entanglement delivery
         *** application specific quantities:
@@ -104,23 +114,43 @@ def T_sequential_no_cutoff(τ_coh, mu_link, F_link,links):
     if type(links) != np.ndarray:
         links = np.array(links)
     τs = links/c
-    T_tot = 2* np.sum( τs / (p_link*Trans(links)) )
+    if cct:
+        T_tot = 2* np.sum( τs / (p_link*Trans(links)) )
 
-    raw_rate = 1/T_tot
-    N_links = len(links) # number of links, i.e. no. of repeaters + 1
-    mu_e2e = mu_link**(2*N_links-1)
-    # secret key rate calculations
-    f_memory_qkd = np.prod( p_link*Trans(links[1:])*np.exp(-4*τs[1:]/τ_coh)/(1- (1-p_link*Trans(links[1:]))*np.exp(-2*τs[1:]/τ_coh) )  )
-    f_e2e_qkd = 0.5 + 0.5 * (2*F_link-1)**N_links *f_memory_qkd
-    ex = (1 - mu_e2e)/2
-    ez = (1 + mu_e2e)/2 - mu_e2e * f_e2e_qkd
-    skr = raw_rate * (1-h([ex])-h([ez]))
-    #  fidelity of e2e Bell pairs
-    Le2e = np.sum(links)
-    τe2e = Le2e/c
-    f_memory_bell = np.exp(-3*τe2e/τ_coh) *np.prod(p_link*Trans(links[1:])*np.exp(-4*τs[1:]/τ_coh)/(1- (1-p_link*Trans(links[1:]))*np.exp(-4*τs[1:]/τ_coh) ) )
-    f_e2e_bell = 0.5 + 0.5 * (2*F_link-1)**N_links *f_memory_bell
-    F_e2e = mu_e2e * f_e2e_bell + (1-mu_e2e)/4
+        raw_rate = 1/T_tot
+        N_links = len(links) # number of links, i.e. no. of repeaters + 1
+        mu_e2e = mu_link**(2*N_links-1)
+        # secret key rate calculations
+        f_memory_qkd = np.prod( p_link*Trans(links[1:])*np.exp(-4*τs[1:]/τ_coh)/(1- (1-p_link*Trans(links[1:]))*np.exp(-2*τs[1:]/τ_coh) )  )
+        f_e2e_qkd = 0.5 + 0.5 * (2*F_link-1)**N_links *f_memory_qkd
+        ex = (1 - mu_e2e)/2
+        ez = (1 + mu_e2e)/2 - mu_e2e * f_e2e_qkd
+        skr = raw_rate * (1-h([ex])-h([ez]))
+        #  fidelity of e2e Bell pairs
+        Le2e = np.sum(links)
+        τe2e = Le2e/c
+        f_memory_bell = np.exp(-3*τe2e/τ_coh) *np.prod(p_link*Trans(links[1:])*np.exp(-4*τs[1:]/τ_coh)/(1- (1-p_link*Trans(links[1:]))*np.exp(-4*τs[1:]/τ_coh) ) )
+        f_e2e_bell = 0.5 + 0.5 * (2*F_link-1)**N_links *f_memory_bell
+        F_e2e = mu_e2e * f_e2e_bell + (1-mu_e2e)/4
+
+    else:
+        T_tot = np.sum( τs / (p_link*Trans(links)) )
+
+        raw_rate = 1/T_tot
+        N_links = len(links) # number of links, i.e. no. of repeaters + 1
+        mu_e2e = mu_link**(2*N_links-1)
+        # secret key rate calculations
+        f_memory_qkd = np.prod( p_link*Trans(links[1:])*np.exp(-2*τs[1:]/τ_coh)/(1- (1-p_link*Trans(links[1:]))*np.exp(-τs[1:]/τ_coh) )  )
+        f_e2e_qkd = 0.5 + 0.5 * (2*F_link-1)**N_links *f_memory_qkd
+        ex = (1 - mu_e2e)/2
+        ez = (1 + mu_e2e)/2 - mu_e2e * f_e2e_qkd
+        skr = raw_rate * (1-h([ex])-h([ez]))
+        #  fidelity of e2e Bell pairs
+        Le2e = np.sum(links)
+        τe2e = Le2e/c
+        f_memory_bell = np.exp(-τs[0]/τ_coh)*np.prod(p_link*Trans(links[1:])*np.exp(-3*τs[1:]/τ_coh)/(1- (1-p_link*Trans(links[1:]))*np.exp(-2*τs[1:]/τ_coh) ) )
+        f_e2e_bell = 0.5 + 0.5 * (2*F_link-1)**N_links *f_memory_bell
+        F_e2e = mu_e2e * f_e2e_bell + (1-mu_e2e)/4
 
     return raw_rate, skr, F_e2e
 
